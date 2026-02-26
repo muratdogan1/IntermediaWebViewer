@@ -18,12 +18,7 @@
 
         <!-- LEFT -->
         <div class="viewer-left">
-          <div class="pinfo">
-            <div class="pname">Storage</div>
-            <div class="pid">@Model.StorageFolder</div>
-          </div>
-
-          <div class="study-tree">
+          <div class="study-tree" id="studyTree">
             @if (Model.Studies.Count == 0)
             {
               <div style="color:#aaa;padding:12px">Storage içinde görüntü (.dcm + PixelData) yok.</div>
@@ -42,7 +37,10 @@
                     }
                   </div>
 
-                  @foreach (var se in st.Series)
+                  @foreach (var se in st.Series.Where(x =>
+                     !string.Equals((x.SeriesDescription ?? "").Trim(), "AutoAlign Verification", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals((x.SeriesDescription ?? "").Trim(), "PhoenixZIPReport", StringComparison.OrdinalIgnoreCase)
+                  ))
                   {
                     <div class="series-block">
                       <div class="series-title">
@@ -55,7 +53,8 @@
                         @foreach (var f in se.Files)
                         {
                           var active = string.Equals(f.FileName, Model.Selected, StringComparison.OrdinalIgnoreCase) ? "active" : "";
-                          <a class="@active"
+                          <a class="thumbLink @active"
+                             data-file="@f.FileName"
                              asp-controller="Viewer"
                              asp-action="Index"
                              asp-route-file="@f.FileName">
@@ -80,8 +79,84 @@
         <!-- MAIN -->
         <div class="viewer-main">
           <div class="viewer-toolbar">
+
+            <!-- OViyam-like icon toolstrip (TEK SET) -->
+            <div class="ov-toolstrip">
+              <button class="ov-icbtn" type="button" title="Pan (Drag)" id="toolPan">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 12V7a2 2 0 1 1 4 0v5h1V6a2 2 0 1 1 4 0v8.5l.7.2A3.5 3.5 0 0 1 20 18v1.5A3.5 3.5 0 0 1 16.5 23H12a6 6 0 0 1-6-6v-5a2 2 0 1 1 2 0z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Zoom In" id="toolZoomIn">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
+                  <path d="M10.5 8a1 1 0 0 1 1 1v1.5H13a1 1 0 1 1 0 2h-1.5V14a1 1 0 1 1-2 0v-1.5H8a1 1 0 1 1 0-2h1.5V9a1 1 0 0 1 1-1z"/>
+                  <path d="M16.8 16.8a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1-1.4 1.4l-2.6-2.6a1 1 0 0 1 0-1.4z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Zoom Out" id="toolZoomOut">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
+                  <path d="M8 11.5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2H9a1 1 0 0 1-1-1z"/>
+                  <path d="M16.8 16.8a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1-1.4 1.4l-2.6-2.6a1 1 0 0 1 0-1.4z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Fit" id="toolFit">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 3H3v4a1 1 0 1 0 2 0V5h2a1 1 0 1 0 0-2zM21 7V3h-4a1 1 0 1 0 0 2h2v2a1 1 0 1 0 2 0zM7 21H3v-4a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2zM21 17v4h-4a1 1 0 1 1 0-2h2v-2a1 1 0 1 1 2 0z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Reset" id="toolReset2">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5a7 7 0 1 1-6.3 4 1 1 0 1 1 1.8.9A5 5 0 1 0 12 7h-1a1 1 0 1 1 0-2h3.5A1.5 1.5 0 0 1 16 6.5V10a1 1 0 1 1-2 0V7.6A7 7 0 0 0 12 5z"/>
+                </svg>
+              </button>
+
+              <span class="ov-sep"></span>
+
+              <button class="ov-icbtn" type="button" title="Rotate Left" id="toolRotL">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5a7 7 0 1 1-6.2 10.2 1 1 0 1 1 1.8-.9A5 5 0 1 0 12 7h-1.2l1.1 1.1a1 1 0 0 1-1.4 1.4L7.7 6.7a1 1 0 0 1 0-1.4l2.8-2.8a1 1 0 1 1 1.4 1.4L10.8 5H12z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Rotate Right" id="toolRotR">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5a7 7 0 1 0 6.2 10.2 1 1 0 1 0-1.8-.9A5 5 0 1 1 12 7h1.2l-1.1 1.1a1 1 0 0 0 1.4 1.4l2.8-2.8a1 1 0 0 0 0-1.4l-2.8-2.8a1 1 0 1 0-1.4 1.4L13.2 5H12z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Flip H" id="toolFlipH">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M11 4a1 1 0 0 1 1 1v14a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1z"/>
+                  <path d="M4 12l4-4v3h4v2H8v3l-4-4zM20 12l-4 4v-3h-4v-2h4V8l4 4z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Flip V" id="toolFlipV">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 11a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1z"/>
+                  <path d="M12 4l4 4h-3v4h-2V8H8l4-4zM12 20l-4-4h3v-4h2v4h3l-4 4z"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- reset (pan/zoom reset) -->
             <button class="tool" type="button" id="btnReset">Reset</button>
-            <span style="color:#666;font-size:12px;margin-left:auto">Wheel: Zoom • Drag: Pan</span>
+
+            <!-- cine -->
+            <div class="cine">
+              <span>Loop</span>
+              <input id="cineLoop" type="checkbox" />
+              <input id="cineSlider" type="range" min="0" max="0" value="0" step="1" />
+              <span id="cineInfo">0 / 0</span>
+            </div>
+
+            <span class="hint">Wheel: Zoom • Drag: Pan</span>
           </div>
 
           <div class="viewer-canvas" id="canvas">
@@ -96,7 +171,7 @@
             }
           </div>
 
-          <div class="viewer-caption">
+          <div class="viewer-caption" id="caption">
             Açılıyor: @Model.Selected
           </div>
         </div>
@@ -106,35 +181,10 @@
   </div>
 </div>
 
-<style>
-  /* Bu stiller senin ov-* temasını bozmadan sadece tree + thumbs düzenler */
-  .study-tree { padding: 10px; }
-  .study-block { margin-bottom: 14px; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; overflow: hidden; }
-  .study-title { padding: 10px 12px; background: rgba(255,255,255,.03); }
-  .study-pn { font-weight: 700; color: #f39c12; font-size: 13px; }
-  .study-uid { font-family: monospace; font-size: 11px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .study-date { font-size: 11px; color: #888; margin-top: 2px; }
-
-  .series-block { padding: 8px 10px 10px; }
-  .series-title { display:flex; gap:8px; align-items:center; margin-bottom: 8px; }
-  .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: rgba(243,156,18,.15); color:#f39c12; border:1px solid rgba(243,156,18,.35); }
-  .series-desc { color:#ddd; font-size: 12px; }
-  .series-uid { margin-left:auto; font-family: monospace; font-size: 10px; color:#777; max-width: 180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-  .gridthumbs { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .gridthumbs a { position:relative; display:block; border-radius: 10px; overflow:hidden; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.25); }
-  .gridthumbs a.active { outline: 2px solid rgba(243,156,18,.9); }
-  .gridthumbs img { width:100%; height: 110px; object-fit: cover; display:block; filter: contrast(1.05); }
-  .thumb-meta { position:absolute; bottom:6px; right:6px; font-size:10px; color:#fff; background: rgba(0,0,0,.45); padding:2px 6px; border-radius: 999px; }
-
-  /* Canvas pan/zoom için */
-  .viewer-canvas { position:relative; overflow:hidden; cursor: grab; user-select:none; }
-  .viewer-canvas.grabbing { cursor: grabbing; }
-  #dicomImg { will-change: transform; transform-origin: 0 0; }
-</style>
-
 <script>
-  // Wheel zoom + drag pan (pure JS)
+  // =========================
+  // PAN + ZOOM (wheel + drag)
+  // =========================
   (function () {
     const canvas = document.getElementById('canvas');
     const img = document.getElementById('dicomImg');
@@ -150,6 +200,7 @@
 
     function apply() {
       img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      img.style.transformOrigin = '0 0';
     }
 
     function clampScale(v) {
@@ -162,12 +213,9 @@
       const cy = clientY - rect.top;
 
       const prev = scale;
-      const next = clampScale(scale * (delta > 0 ? 0.9 : 1.1)); // wheel down => zoom out
+      const next = clampScale(scale * (delta > 0 ? 0.9 : 1.1));
       if (next === prev) return;
 
-      // mouse point sabit kalsın diye translate ayarla
-      // (cx,cy) canvas koordinatı, mevcut transform (tx,ty,scale)
-      // world point = (cx - tx)/scale
       const wx = (cx - tx) / prev;
       const wy = (cy - ty) / prev;
 
@@ -211,7 +259,148 @@
       apply();
     });
 
-    // ilk çizim
     apply();
+  })();
+
+  // =========================
+  // CINE SLIDER (Oviyam-like)
+  // =========================
+  (function () {
+    const slider = document.getElementById('cineSlider');
+    const info = document.getElementById('cineInfo');
+    const loopChk = document.getElementById('cineLoop');
+    const img = document.getElementById('dicomImg');
+    const caption = document.getElementById('caption');
+
+    const thumbs = Array.from(document.querySelectorAll('a.thumbLink[data-file]'));
+    if (!slider || !info || !loopChk || !img || thumbs.length === 0) {
+      if (info) info.textContent = "0 / 0";
+      return;
+    }
+
+    const files = thumbs.map(a => a.getAttribute('data-file'));
+    const selectedFromServer = "@(Model.Selected ?? "")";
+
+    function findIndexByFile(file) {
+      if (!file) return 0;
+      const ix = files.findIndex(x => (x || "").toLowerCase() === file.toLowerCase());
+      return ix >= 0 ? ix : 0;
+    }
+
+    let idx = findIndexByFile(selectedFromServer);
+
+    slider.min = 0;
+    slider.max = Math.max(0, files.length - 1);
+    slider.value = idx;
+
+    function setActiveThumb(i) {
+      thumbs.forEach((a, k) => {
+        if (k === i) a.classList.add('active');
+        else a.classList.remove('active');
+      });
+      thumbs[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    function setImageByIndex(i, updateUrl = true) {
+      i = Math.max(0, Math.min(files.length - 1, i));
+      idx = i;
+      slider.value = i;
+      info.textContent = `${i + 1} / ${files.length}`;
+
+      const file = files[i];
+      img.src = `/Viewer/Render?file=${encodeURIComponent(file)}`;
+      if (caption) caption.textContent = `Açılıyor: ${file}`;
+
+      setActiveThumb(i);
+
+      if (updateUrl) {
+        const newUrl = `/Viewer?file=${encodeURIComponent(file)}`;
+        history.replaceState(null, "", newUrl);
+      }
+    }
+
+    slider.addEventListener('input', () => {
+      setImageByIndex(parseInt(slider.value, 10), true);
+    });
+
+    thumbs.forEach((a, i) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        setImageByIndex(i, true);
+      });
+    });
+
+    let timer = null;
+    function stopLoop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+    function startLoop() {
+      stopLoop();
+      timer = setInterval(() => {
+        let next = idx + 1;
+        if (next >= files.length) {
+          if (loopChk.checked) next = 0;
+          else { stopLoop(); return; }
+        }
+        setImageByIndex(next, true);
+      }, 140);
+    }
+
+    loopChk.addEventListener('change', () => {
+      if (loopChk.checked) startLoop();
+      else stopLoop();
+    });
+
+    setImageByIndex(idx, false);
+  })();
+
+  // =========================
+  // TOP TOOLBAR ACTIONS
+  // =========================
+  (function(){
+    const img = document.getElementById('dicomImg');
+    const canvas = document.getElementById('canvas');
+    if(!img || !canvas) return;
+
+    let rot = 0;
+    let flipH = 1;
+    let flipV = 1;
+
+    let wrap = document.getElementById('imgWrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'imgWrap';
+      wrap.style.display = 'inline-block';
+      wrap.style.willChange = 'transform';
+      img.parentNode.insertBefore(wrap, img);
+      wrap.appendChild(img);
+    }
+
+    function applyExtra(){
+      wrap.style.transformOrigin = 'center center';
+      wrap.style.transform = `rotate(${rot}deg) scale(${flipH}, ${flipV})`;
+    }
+
+    function fireWheelZoom(isOut){
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const evt = new WheelEvent('wheel', { deltaY: isOut ? 100 : -100, clientX: cx, clientY: cy });
+      canvas.dispatchEvent(evt);
+    }
+
+    document.getElementById('toolZoomIn')?.addEventListener('click', ()=> fireWheelZoom(false));
+    document.getElementById('toolZoomOut')?.addEventListener('click', ()=> fireWheelZoom(true));
+
+    const btnReset = document.getElementById('btnReset');
+    document.getElementById('toolReset2')?.addEventListener('click', ()=> btnReset?.click());
+    document.getElementById('toolFit')?.addEventListener('click', ()=> btnReset?.click());
+
+    document.getElementById('toolRotL')?.addEventListener('click', ()=>{ rot = (rot - 90) % 360; applyExtra(); });
+    document.getElementById('toolRotR')?.addEventListener('click', ()=>{ rot = (rot + 90) % 360; applyExtra(); });
+    document.getElementById('toolFlipH')?.addEventListener('click', ()=>{ flipH *= -1; applyExtra(); });
+    document.getElementById('toolFlipV')?.addEventListener('click', ()=>{ flipV *= -1; applyExtra(); });
+
+    applyExtra();
   })();
 </script>
