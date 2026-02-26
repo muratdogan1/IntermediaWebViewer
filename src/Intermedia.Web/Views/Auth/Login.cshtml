@@ -1,0 +1,48 @@
+@{
+  ViewData["Title"] = "Login";
+  var returnUrl = (string?)ViewBag.ReturnUrl ?? "/";
+}
+
+<div class="ov-shell">
+  <div class="ov-card" style="max-width:520px;margin:60px auto;">
+    <div class="ov-topbar">
+      <div>
+        <span class="ov-brand">interMEDIA</span>
+        <span class="ov-sub">Login</span>
+      </div>
+    </div>
+
+    @if (TempData["err"] is string err)
+    {
+      <div style="padding:10px;color:#ffb3b3">@err</div>
+    }
+
+    <div class="ov-content">
+      <form method="post" action="/Auth/Login">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="color:#bdbdbd;font-size:12px">Username</label>
+            <input name="username" autocomplete="username"
+                   style="height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#0f1113;color:#ddd;padding:0 10px" />
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="color:#bdbdbd;font-size:12px">Password</label>
+            <input name="password" type="password" autocomplete="current-password"
+                   style="height:40px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#0f1113;color:#ddd;padding:0 10px" />
+          </div>
+
+          <button class="btn btn-primary" type="submit" style="width:160px">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#121416; color:#ddd; text-decoration:none; cursor:pointer; }
+  .btn-primary { border-color:#ff9800; color:#ff9800; }
+</style>

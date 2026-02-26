@@ -12,6 +12,14 @@
         <a class="ov-tab active" asp-controller="Studies" asp-action="Index">Home</a>
         <a class="ov-tab" asp-controller="Viewer" asp-action="Index">Viewer</a>
       </div>
+      <div class="ov-tabs">
+    <a class="ov-tab active" asp-controller="Studies" asp-action="Index">Home</a>
+    <a class="ov-tab" asp-controller="Viewer" asp-action="Index">Viewer</a>
+
+    <form asp-controller="Auth" asp-action="Logout" method="post" style="display:inline">
+        <button type="submit" class="ov-tab" style="cursor:pointer">Logout</button>
+    </form>
+</div>
     </div>
 
     @if (TempData["err"] is string err)
