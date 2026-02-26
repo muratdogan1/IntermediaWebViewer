@@ -1,3 +1,4 @@
+using FellowOakDicom;
 using Intermedia.Dicom.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,29 +17,20 @@ public class StudiesController : Controller
         _settings = settings;
     }
 
-    // GET /Studies?patientId=...&patientName=...&fromDate=...&toDate=...
     [HttpGet]
-    public async Task<IActionResult> Index(string? patientId = null, string? patientName = null, DateTime? fromDate = null, DateTime? toDate = null)
+    public async Task<IActionResult> Index(string? patientName = null, string? patientId = null, DateTime? fromDate = null, DateTime? toDate = null)
     {
-        ViewBag.PatientId = patientId;
+        // İstersen burada ViewBag dolduruyorsun (sende vardı)
         ViewBag.PatientName = patientName;
+        ViewBag.PatientId = patientId;
         ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
         ViewBag.ToDate = toDate?.ToString("yyyy-MM-dd");
 
-        var studies = await _query.FindStudiesAsync(
-            _settings,
-            patientName: patientName,
-            patientId: patientId,
-            fromDate: fromDate,
-            toDate: toDate
-        );
-
+        var studies = await _query.FindStudiesAsync(_settings, patientName, patientId, fromDate, toDate);
         return View(studies);
     }
 
-    // POST /Studies/Move
     [HttpPost]
-    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Move(string studyUid)
     {
         if (string.IsNullOrWhiteSpace(studyUid))
@@ -49,18 +41,80 @@ public class StudiesController : Controller
 
         await _move.MoveStudyAsync(_settings, studyUid);
 
-        TempData["ok"] = "C-MOVE tamamlandı. Open ile Viewer'a geçebilirsin.";
+        TempData["ok"] = "C-MOVE tamamlandı. Viewer'dan açabilirsin.";
         return RedirectToAction(nameof(Index));
     }
 
-    // GET /Studies/Open?studyUid=...
+    // ✅ Open: Storage'ta bu study yoksa otomatik C-MOVE yap, sonra Viewer'a geç
     [HttpGet]
-    public IActionResult Open(string studyUid)
+    public async Task<IActionResult> Open(string studyUid)
     {
         if (string.IsNullOrWhiteSpace(studyUid))
+        {
+            TempData["err"] = "studyUid boş olamaz.";
             return RedirectToAction(nameof(Index));
+        }
 
-        // Viewer tarafında studyUid ile Storage içinden o study'yi göstereceğiz
+        // 1) Bu study için Storage'ta görüntülenebilir (PixelData'lı) en az 1 dosya var mı?
+        var hasLocal = HasAnyRenderableInstanceInStorage(studyUid);
+
+        // 2) Yoksa otomatik C-MOVE çalıştır
+        if (!hasLocal)
+        {
+            await _move.MoveStudyAsync(_settings, studyUid);
+
+            // 3) SCP dosyaları yazarken küçük bir süre gerekebilir -> kısa poll
+            var timeoutMs = 12000;
+            var stepMs = 400;
+
+            for (var waited = 0; waited < timeoutMs; waited += stepMs)
+            {
+                if (HasAnyRenderableInstanceInStorage(studyUid))
+                    break;
+
+                await Task.Delay(stepMs);
+            }
+        }
+
+        // 4) Viewer'a geç
         return RedirectToAction("Index", "Viewer", new { studyUid });
+    }
+
+    private bool HasAnyRenderableInstanceInStorage(string studyUid)
+    {
+        try
+        {
+            var storage = _settings.StorageFolder;
+            if (string.IsNullOrWhiteSpace(storage) || !Directory.Exists(storage))
+                return false;
+
+            foreach (var fullPath in Directory.EnumerateFiles(storage, "*.dcm", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    // PixelData okumadan header oku (hızlı)
+                    var df = DicomFile.Open(fullPath, FileReadOption.ReadLargeOnDemand);
+                    var ds = df.Dataset;
+
+                    var sUid = ds?.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "") ?? "";
+                    if (!string.Equals(sUid, studyUid, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    // Render edilebilir mi? (PixelData var mı)
+                    if (ds != null && ds.Contains(DicomTag.PixelData))
+                        return true;
+                }
+                catch
+                {
+                    // bozuk/uyumsuz dosyayı es geç
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
