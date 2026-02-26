@@ -1,4 +1,4 @@
-using System.Globalization;
+using System.IO;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
 using Intermedia.Web.Models;
@@ -18,92 +18,91 @@ public class ViewerController : Controller
         _env = env;
     }
 
-    // /Viewer?studyUid=...&file=...
+    // /Viewer?studyUid=...&file=relative/path.dcm
     [HttpGet]
     public IActionResult Index(string? studyUid = null, string? file = null)
     {
         var storage = Path.Combine(_env.ContentRootPath, "Storage");
         Directory.CreateDirectory(storage);
 
-        var dicomFiles = Directory.EnumerateFiles(storage, "*.dcm", SearchOption.TopDirectoryOnly)
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        // Storage altındaki tüm .dcm dosyalarını (alt klasörler dahil) tara
+        var allDicomFiles = Directory
+            .EnumerateFiles(storage, "*.dcm", SearchOption.AllDirectories)
             .ToList();
 
-        // StudyUID -> StudyGroupVm
-        var studyMap = new Dictionary<string, StudyGroupVm>(StringComparer.OrdinalIgnoreCase);
+        // Study/Series gruplama için meta oku (hatalı/PixelData olmayanlar da olabilir)
+        var studies = new List<StudyGroupVm>();
 
-        foreach (var fullPath in dicomFiles)
+        foreach (var fullPath in allDicomFiles)
         {
-            var fileName = Path.GetFileName(fullPath);
-
-            // Büyük tag'ları (PixelData) okumadan sadece header bilgilerini çek
-            DicomDataset? ds = null;
             try
             {
-                var df = DicomFile.Open(fullPath, FileReadOption.ReadLargeOnDemand);
-                ds = df.Dataset;
+                // sadece header okumaya çalış (hafif). fo-dicom: FileReadOption.ReadLargeOnDemand her sürümde var.
+                // Eğer sende farklıysa: DicomFile.Open(fullPath) da çalışır ama daha ağırdır.
+                var dicomFile = DicomFile.Open(fullPath, FileReadOption.ReadLargeOnDemand);
+                var ds = dicomFile.Dataset;
+
+                var suid = ds.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "");
+                var serUid = ds.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "");
+                if (string.IsNullOrWhiteSpace(suid) || string.IsNullOrWhiteSpace(serUid))
+                    continue;
+
+                // Eğer URL ile studyUid geldiyse sadece onu göster
+                if (!string.IsNullOrWhiteSpace(studyUid) &&
+                    !string.Equals(studyUid, suid, StringComparison.Ordinal))
+                    continue;
+
+                var patientName = ds.GetSingleValueOrDefault(DicomTag.PatientName, "");
+                var studyDate = ds.GetSingleValueOrDefault(DicomTag.StudyDate, "");
+                var seriesDesc = ds.GetSingleValueOrDefault(DicomTag.SeriesDescription, "");
+                var modality = ds.GetSingleValueOrDefault(DicomTag.Modality, "");
+                int? instanceNumber = null;
+                if (ds.TryGetSingleValue(DicomTag.InstanceNumber, out int inst))
+                    instanceNumber = inst;
+
+                // storage'a göre relative path tut (Viewer/Render bunu kullanacak)
+                var rel = Path.GetRelativePath(storage, fullPath);
+                // URL'de daha temiz olsun diye / kullan
+                rel = rel.Replace('\\', '/');
+
+                var st = studies.FirstOrDefault(x => x.StudyInstanceUid == suid);
+                if (st == null)
+                {
+                    st = new StudyGroupVm
+                    {
+                        StudyInstanceUid = suid,
+                        PatientName = patientName,
+                        StudyDate = studyDate
+                    };
+                    studies.Add(st);
+                }
+
+                var se = st.Series.FirstOrDefault(x => x.SeriesInstanceUid == serUid);
+                if (se == null)
+                {
+                    se = new SeriesGroupVm
+                    {
+                        SeriesInstanceUid = serUid,
+                        SeriesDescription = seriesDesc,
+                        Modality = modality
+                    };
+                    st.Series.Add(se);
+                }
+
+                se.Files.Add(new FileItemVm
+                {
+                    FileName = rel,
+                    InstanceNumber = instanceNumber
+                });
             }
             catch
             {
-                // Bazı dosyalar part10/meta uyumsuz olabilir.
-                // Yine de listede görünsün diye Unknown'a koyacağız.
+                // okunamayan dosyayı atla
             }
-
-            var sUid = ds?.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "") ?? "";
-            var seUid = ds?.GetSingleValueOrDefault(DicomTag.SeriesInstanceUID, "") ?? "";
-
-            if (string.IsNullOrWhiteSpace(sUid)) sUid = "UNKNOWN-STUDY";
-            if (string.IsNullOrWhiteSpace(seUid)) seUid = "UNKNOWN-SERIES";
-
-            var patientName = ds?.GetSingleValueOrDefault(DicomTag.PatientName, "") ?? "";
-            var studyDateRaw = ds?.GetSingleValueOrDefault(DicomTag.StudyDate, "") ?? "";
-            var studyDate = NormalizeDicomDate(studyDateRaw);
-
-            var seriesDesc = ds?.GetSingleValueOrDefault(DicomTag.SeriesDescription, "") ?? "";
-            var modality = ds?.GetSingleValueOrDefault(DicomTag.Modality, "") ?? "";
-
-            int? instanceNumber = null;
-            try
-            {
-                instanceNumber = ds?.GetSingleValueOrDefault(DicomTag.InstanceNumber, 0);
-                if (instanceNumber == 0) instanceNumber = null;
-            }
-            catch { /* ignore */ }
-
-            if (!studyMap.TryGetValue(sUid, out var study))
-            {
-                study = new StudyGroupVm
-                {
-                    StudyInstanceUid = sUid,
-                    PatientName = string.IsNullOrWhiteSpace(patientName) ? null : patientName,
-                    StudyDate = string.IsNullOrWhiteSpace(studyDate) ? null : studyDate
-                };
-                studyMap[sUid] = study;
-            }
-
-            var series = study.Series.FirstOrDefault(x =>
-                string.Equals(x.SeriesInstanceUid, seUid, StringComparison.OrdinalIgnoreCase));
-
-            if (series == null)
-            {
-                series = new SeriesGroupVm
-                {
-                    SeriesInstanceUid = seUid,
-                    SeriesDescription = string.IsNullOrWhiteSpace(seriesDesc) ? null : seriesDesc,
-                    Modality = string.IsNullOrWhiteSpace(modality) ? null : modality
-                };
-                study.Series.Add(series);
-            }
-
-            series.Files.Add(new FileItemVm
-            {
-                FileName = fileName,
-                InstanceNumber = instanceNumber
-            });
         }
 
-        // Dosyaları InstanceNumber'a göre sırala
-        foreach (var st in studyMap.Values)
+        // Sıralama
+        foreach (var st in studies)
         {
             foreach (var se in st.Series)
             {
@@ -114,64 +113,52 @@ public class ViewerController : Controller
             }
 
             st.Series = st.Series
-                .OrderBy(x => x.Modality ?? "", StringComparer.OrdinalIgnoreCase)
-                .ThenBy(x => x.SeriesDescription ?? "", StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x.Modality)
+                .ThenBy(x => x.SeriesDescription)
                 .ToList();
         }
 
-        var allStudies = studyMap.Values
-            .OrderByDescending(x => x.StudyDate ?? "")
-            .ThenBy(x => x.PatientName ?? "", StringComparer.OrdinalIgnoreCase)
+        studies = studies
+            .OrderByDescending(x => x.StudyDate)
+            .ThenBy(x => x.PatientName)
             .ToList();
 
-        // Eğer studyUid param geldiyse, sadece onu göster (bulunamazsa fallback: hepsini göster)
-        List<StudyGroupVm> visibleStudies = allStudies;
-        if (!string.IsNullOrWhiteSpace(studyUid))
-        {
-            var filtered = allStudies
-                .Where(x => string.Equals(x.StudyInstanceUid, studyUid, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (filtered.Count > 0)
-                visibleStudies = filtered;
-        }
-
-        // Seçili dosya belirle
+        // Selected belirle:
+        // 1) URL'den file geldiyse onu seç
+        // 2) yoksa ilk bulunan dosyayı seç
         string? selected = null;
 
         if (!string.IsNullOrWhiteSpace(file))
         {
-            // file doğrudan seçildiyse
-            var exists = dicomFiles.Any(p => string.Equals(Path.GetFileName(p), file, StringComparison.OrdinalIgnoreCase));
-            if (exists) selected = file;
+            // normalize
+            var wanted = file.Replace('\\', '/');
+            if (studies.SelectMany(s => s.Series).SelectMany(s => s.Files)
+                .Any(f => string.Equals(f.FileName, wanted, StringComparison.OrdinalIgnoreCase)))
+            {
+                selected = wanted;
+            }
         }
 
         if (selected == null)
         {
-            // studyUid varsa önce o study içinden ilk dosyayı seç
-            selected = visibleStudies
+            selected = studies
                 .SelectMany(s => s.Series)
-                .SelectMany(se => se.Files)
+                .SelectMany(s => s.Files)
                 .Select(f => f.FileName)
                 .FirstOrDefault();
-
-            // hala yoksa (hiç dosya yoksa) null kalır
         }
 
         var vm = new ViewerIndexVm
         {
-            Studies = visibleStudies,
+            Studies = studies,
             Selected = selected,
             StorageFolder = storage
         };
 
-        // View içinde Open linkleri için studyUid'yi de göstermek istersen lazım olabilir
-        ViewBag.StudyUid = studyUid;
-
         return View(vm);
     }
 
-    // /Viewer/Render?file=xxx.dcm&w=160
+    // /Viewer/Render?file=relative/path.dcm&w=160
     [HttpGet]
     public IActionResult Render(string file, int? w = null)
     {
@@ -179,15 +166,25 @@ public class ViewerController : Controller
             return BadRequest("file boş olamaz.");
 
         var storage = Path.Combine(_env.ContentRootPath, "Storage");
-        var fullPath = Path.Combine(storage, file);
+        Directory.CreateDirectory(storage);
+
+        // URL'den gelen "a/b/c.dcm" -> OS path
+        var rel = file.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+
+        // Güvenlik: Storage dışına çıkmayı engelle
+        var fullPath = Path.GetFullPath(Path.Combine(storage, rel));
+        var storageFull = Path.GetFullPath(storage);
+
+        if (!fullPath.StartsWith(storageFull, StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Geçersiz dosya yolu.");
 
         if (!System.IO.File.Exists(fullPath))
             return NotFound("Dosya bulunamadı: " + file);
 
+        // PixelData yoksa DicomImage patlar; bunu yakalayıp mesaj döndürelim
         try
         {
             var dicomImage = new DicomImage(fullPath);
-
             using var rendered = dicomImage.RenderImage();
             using Image sharp = rendered.AsSharpImage();
 
@@ -205,27 +202,9 @@ public class ViewerController : Controller
             sharp.Save(ms, new PngEncoder());
             return File(ms.ToArray(), "image/png");
         }
-        catch
+        catch (DicomImagingException)
         {
-            // SR/PR gibi pixel içermeyen veya render edilemeyen dosyalar:
-            // thumbnail kırılmasın diye "No Content" dönelim.
-            return NoContent();
+            return BadRequest("Seçilen DICOM görüntü değil (PixelData yok).");
         }
-    }
-
-    private static string? NormalizeDicomDate(string? dicomDate)
-    {
-        if (string.IsNullOrWhiteSpace(dicomDate)) return null;
-
-        // DICOM date: YYYYMMDD
-        if (DateTime.TryParseExact(dicomDate, "yyyyMMdd", CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out var dt))
-        {
-            return dt.ToString("yyyy-MM-dd");
-        }
-
-        return dicomDate;
     }
 }
-
-
