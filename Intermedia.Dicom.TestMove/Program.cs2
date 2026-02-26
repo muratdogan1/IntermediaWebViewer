@@ -1,0 +1,61 @@
+﻿using System;
+using System.Threading.Tasks;
+using FellowOakDicom;
+using FellowOakDicom.Network;
+using FellowOakDicom.Network.Client;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        string pacsIp = "127.0.0.1";     // PACS IP
+        int pacsPort = 104;              // PACS Port
+        string callingAe = "TESTCLIENT"; // Senin AE Title
+        string calledAe = "interMEDIAPacs"; // PACS AE Title
+
+        Console.WriteLine("C-FIND başlatılıyor...\n");
+
+        var client = DicomClientFactory.Create(pacsIp, pacsPort, false, callingAe, calledAe);
+
+        var findRequest = new DicomCFindRequest(DicomQueryRetrieveLevel.Study);
+
+        // Filtre (boş bırakırsan hepsi gelir)
+        findRequest.Dataset.AddOrUpdate(DicomTag.PatientName, "");
+        findRequest.Dataset.AddOrUpdate(DicomTag.StudyInstanceUID, "");
+
+        findRequest.OnResponseReceived += (req, res) =>
+        {
+            if (res.Status == DicomStatus.Pending)
+            {
+                var studyUid = res.Dataset.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "");
+                var patientName = res.Dataset.GetSingleValueOrDefault(DicomTag.PatientName, "");
+
+                Console.WriteLine($"StudyUID: {studyUid}");
+                Console.WriteLine($"Patient: {patientName}");
+                Console.WriteLine("----------------------------");
+            }
+        };
+
+        await client.AddRequestAsync(findRequest);
+        await client.SendAsync();
+
+        Console.WriteLine("\nC-FIND tamamlandı.");
+        Console.Write("Taşımak istediğiniz StudyInstanceUID girin: ");
+        string studyInstanceUid = Console.ReadLine();
+
+        var moveClient = DicomClientFactory.Create(pacsIp, pacsPort, false, callingAe, calledAe);
+
+        var moveRequest = new DicomCMoveRequest("LOCALSTORAGE", studyInstanceUid);
+
+        moveRequest.OnResponseReceived += (req, res) =>
+        {
+            Console.WriteLine($"C-MOVE Status: {res.Status}");
+        };
+
+        await moveClient.AddRequestAsync(moveRequest);
+        await moveClient.SendAsync();
+
+        Console.WriteLine("C-MOVE tamamlandı.");
+        Console.ReadKey();
+    }
+}

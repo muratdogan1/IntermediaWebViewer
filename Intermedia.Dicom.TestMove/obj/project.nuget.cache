@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "dgSpecHash": "heuiF3Pljsw=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\interMEDIA\\OneDrive\\Desktop\\IntermediaWebViewer\\intermedia.dicom.testmove\\Intermedia.Dicom.TestMove.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\communitytoolkit.highperformance\\8.4.0\\communitytoolkit.highperformance.8.4.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\fo-dicom\\5.2.5\\fo-dicom.5.2.5.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\fo-dicom.imaging.imagesharp\\5.2.5\\fo-dicom.imaging.imagesharp.5.2.5.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.bcl.hashcode\\6.0.0\\microsoft.bcl.hashcode.6.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\8.0.0\\microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.configuration.binder\\8.0.2\\microsoft.extensions.configuration.binder.8.0.2.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\8.0.1\\microsoft.extensions.dependencyinjection.8.0.1.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.logging\\8.0.1\\microsoft.extensions.logging.8.0.1.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.2\\microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.options\\8.0.2\\microsoft.extensions.options.8.0.2.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\8.0.0\\microsoft.extensions.options.configurationextensions.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\sixlabors.imagesharp\\3.1.11\\sixlabors.imagesharp.3.1.11.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\system.buffers\\4.6.1\\system.buffers.4.6.1.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\system.text.encoding.codepages\\8.0.0\\system.text.encoding.codepages.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\system.text.json\\8.0.6\\system.text.json.8.0.6.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\system.threading.channels\\8.0.0\\system.threading.channels.8.0.0.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.18\\microsoft.netcore.app.ref.8.0.18.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.18\\microsoft.windowsdesktop.app.ref.8.0.18.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.18\\microsoft.aspnetcore.app.ref.8.0.18.nupkg.sha512",
+    "C:\\Users\\interMEDIA\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.18\\microsoft.netcore.app.host.win-x64.8.0.18.nupkg.sha512"
+  ],
+  "logs": []
+}

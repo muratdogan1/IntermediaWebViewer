@@ -1,0 +1,9 @@
+namespace Intermedia.Dicom.Services;
+
+public interface IDicomMoveService
+{
+    /// <summary>
+    /// C-MOVE başlatır (PACS, görüntüleri LocalStorageAE -> LocalStoragePort adresindeki C-STORE SCP'ye yollar)
+    /// </summary>
+    Task MoveStudyAsync(DicomServerSettings settings, string studyInstanceUid);
+}

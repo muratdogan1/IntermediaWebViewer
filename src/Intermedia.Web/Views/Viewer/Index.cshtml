@@ -1,0 +1,217 @@
+@model Intermedia.Web.Models.ViewerIndexVm
+
+<div class="ov-shell">
+  <div class="ov-card">
+    <div class="ov-topbar">
+      <div>
+        <span class="ov-brand">interMEDIA</span>
+        <span class="ov-sub">interMEDIA Dicom viewer</span>
+      </div>
+      <div class="ov-tabs">
+        <a class="ov-tab" asp-controller="Studies" asp-action="Index">Home</a>
+        <a class="ov-tab active" asp-controller="Viewer" asp-action="Index">Viewer</a>
+      </div>
+    </div>
+
+    <div class="ov-content">
+      <div class="viewer-grid">
+
+        <!-- LEFT -->
+        <div class="viewer-left">
+          <div class="pinfo">
+            <div class="pname">Storage</div>
+            <div class="pid">@Model.StorageFolder</div>
+          </div>
+
+          <div class="study-tree">
+            @if (Model.Studies.Count == 0)
+            {
+              <div style="color:#aaa;padding:12px">Storage içinde görüntü (.dcm + PixelData) yok.</div>
+            }
+            else
+            {
+              foreach (var st in Model.Studies)
+              {
+                <div class="study-block">
+                  <div class="study-title">
+                    <div class="study-pn">@(!string.IsNullOrWhiteSpace(st.PatientName) ? st.PatientName : "Patient")</div>
+                    <div class="study-uid" title="@st.StudyInstanceUid">@st.StudyInstanceUid</div>
+                    @if(!string.IsNullOrWhiteSpace(st.StudyDate))
+                    {
+                      <div class="study-date">@st.StudyDate</div>
+                    }
+                  </div>
+
+                  @foreach (var se in st.Series)
+                  {
+                    <div class="series-block">
+                      <div class="series-title">
+                        <span class="badge">@(!string.IsNullOrWhiteSpace(se.Modality) ? se.Modality : "OT")</span>
+                        <span class="series-desc">@(!string.IsNullOrWhiteSpace(se.SeriesDescription) ? se.SeriesDescription : "Series")</span>
+                        <span class="series-uid" title="@se.SeriesInstanceUid">@se.SeriesInstanceUid</span>
+                      </div>
+
+                      <div class="gridthumbs">
+                        @foreach (var f in se.Files)
+                        {
+                          var active = string.Equals(f.FileName, Model.Selected, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+                          <a class="@active"
+                             asp-controller="Viewer"
+                             asp-action="Index"
+                             asp-route-file="@f.FileName">
+                            <img src="@Url.Action("Render","Viewer", new { file = f.FileName, w = 160 })" />
+                            <div class="thumb-meta">
+                              @if (f.InstanceNumber.HasValue)
+                              {
+                                <span>#@f.InstanceNumber</span>
+                              }
+                            </div>
+                          </a>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="viewer-main">
+          <div class="viewer-toolbar">
+            <button class="tool" type="button" id="btnReset">Reset</button>
+            <span style="color:#666;font-size:12px;margin-left:auto">Wheel: Zoom • Drag: Pan</span>
+          </div>
+
+          <div class="viewer-canvas" id="canvas">
+            @if (!string.IsNullOrWhiteSpace(Model.Selected))
+            {
+              <img id="dicomImg" draggable="false"
+                   src="@Url.Action("Render","Viewer", new { file = Model.Selected })" />
+            }
+            else
+            {
+              <div style="color:#aaa">Seçili görüntü yok</div>
+            }
+          </div>
+
+          <div class="viewer-caption">
+            Açılıyor: @Model.Selected
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Bu stiller senin ov-* temasını bozmadan sadece tree + thumbs düzenler */
+  .study-tree { padding: 10px; }
+  .study-block { margin-bottom: 14px; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; overflow: hidden; }
+  .study-title { padding: 10px 12px; background: rgba(255,255,255,.03); }
+  .study-pn { font-weight: 700; color: #f39c12; font-size: 13px; }
+  .study-uid { font-family: monospace; font-size: 11px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .study-date { font-size: 11px; color: #888; margin-top: 2px; }
+
+  .series-block { padding: 8px 10px 10px; }
+  .series-title { display:flex; gap:8px; align-items:center; margin-bottom: 8px; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: rgba(243,156,18,.15); color:#f39c12; border:1px solid rgba(243,156,18,.35); }
+  .series-desc { color:#ddd; font-size: 12px; }
+  .series-uid { margin-left:auto; font-family: monospace; font-size: 10px; color:#777; max-width: 180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .gridthumbs { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .gridthumbs a { position:relative; display:block; border-radius: 10px; overflow:hidden; border:1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.25); }
+  .gridthumbs a.active { outline: 2px solid rgba(243,156,18,.9); }
+  .gridthumbs img { width:100%; height: 110px; object-fit: cover; display:block; filter: contrast(1.05); }
+  .thumb-meta { position:absolute; bottom:6px; right:6px; font-size:10px; color:#fff; background: rgba(0,0,0,.45); padding:2px 6px; border-radius: 999px; }
+
+  /* Canvas pan/zoom için */
+  .viewer-canvas { position:relative; overflow:hidden; cursor: grab; user-select:none; }
+  .viewer-canvas.grabbing { cursor: grabbing; }
+  #dicomImg { will-change: transform; transform-origin: 0 0; }
+</style>
+
+<script>
+  // Wheel zoom + drag pan (pure JS)
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const img = document.getElementById('dicomImg');
+    const btnReset = document.getElementById('btnReset');
+    if (!canvas || !img) return;
+
+    let scale = 1;
+    let tx = 0, ty = 0;
+
+    let isDown = false;
+    let startX = 0, startY = 0;
+    let startTx = 0, startTy = 0;
+
+    function apply() {
+      img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    }
+
+    function clampScale(v) {
+      return Math.min(8, Math.max(0.2, v));
+    }
+
+    function zoomAt(delta, clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = clientX - rect.left;
+      const cy = clientY - rect.top;
+
+      const prev = scale;
+      const next = clampScale(scale * (delta > 0 ? 0.9 : 1.1)); // wheel down => zoom out
+      if (next === prev) return;
+
+      // mouse point sabit kalsın diye translate ayarla
+      // (cx,cy) canvas koordinatı, mevcut transform (tx,ty,scale)
+      // world point = (cx - tx)/scale
+      const wx = (cx - tx) / prev;
+      const wy = (cy - ty) / prev;
+
+      scale = next;
+      tx = cx - wx * scale;
+      ty = cy - wy * scale;
+      apply();
+    }
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoomAt(e.deltaY, e.clientX, e.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDown = true;
+      canvas.classList.add('grabbing');
+      startX = e.clientX;
+      startY = e.clientY;
+      startTx = tx;
+      startTy = ty;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      tx = startTx + dx;
+      ty = startTy + dy;
+      apply();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDown = false;
+      canvas.classList.remove('grabbing');
+    });
+
+    btnReset?.addEventListener('click', () => {
+      scale = 1;
+      tx = 0; ty = 0;
+      apply();
+    });
+
+    // ilk çizim
+    apply();
+  })();
+</script>

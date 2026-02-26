@@ -1,0 +1,69 @@
+@model List<Intermedia.Core.Models.DicomStudy>
+
+<div class="ov-shell">
+  <div class="ov-card">
+    <div class="ov-topbar">
+      <div>
+        <span class="ov-brand">interMEDIA</span>
+        <span class="ov-sub">IntermediaWebViewer</span>
+      </div>
+      <div class="ov-tabs">
+        <a class="ov-tab active" asp-controller="Studies" asp-action="Index">Home</a>
+        <a class="ov-tab" asp-controller="Viewer" asp-action="Index">Viewer</a>
+      </div>
+    </div>
+
+    <div class="ov-content">
+
+      @if (TempData["ok"] is not null)
+      {
+        <div class="ov-alert ok">@TempData["ok"]</div>
+      }
+      @if (TempData["err"] is not null)
+      {
+        <div class="ov-alert err">@TempData["err"]</div>
+      }
+
+      <table class="ov-table">
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Patient Name</th>
+            <th>Study UID</th>
+            <th style="width:120px;text-align:right">Viewer</th>
+            <th style="width:140px;text-align:right">Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach (var s in Model)
+          {
+            <tr>
+              <td>@s.PatientId</td>
+              <td>@s.PatientName</td>
+              <td style="font-family:monospace">@s.StudyInstanceUid</td>
+
+              <!-- OPEN: kesinlikle relative route -->
+              <td style="text-align:right">
+                <a class="btn btn-dark"
+                   asp-controller="Viewer"
+                   asp-action="Index"
+                   asp-route-studyUid="@s.StudyInstanceUid">
+                  Open
+                </a>
+              </td>
+
+              <!-- C-MOVE -->
+              <td style="text-align:right">
+                <form method="post" asp-action="Move" style="display:inline">
+                  <input type="hidden" name="studyUid" value="@s.StudyInstanceUid" />
+                  <button class="btn btn-orange" type="submit">C-MOVE</button>
+                </form>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+</div>

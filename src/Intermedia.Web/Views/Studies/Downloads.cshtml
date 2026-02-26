@@ -1,0 +1,10 @@
+@model List<string>
+
+<h2>İndirilen DICOM Dosyaları</h2>
+
+<ul>
+@foreach (var f in Model)
+{
+    <li>@f</li>
+}
+</ul>
