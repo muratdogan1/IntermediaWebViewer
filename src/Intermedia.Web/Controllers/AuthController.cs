@@ -1,44 +1,41 @@
 using System.Security.Claims;
-using Intermedia.Web.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Intermedia.Web.Models;
 
-namespace Intermedia.Web.Controllers;
-
-[AllowAnonymous]
-[Route("Auth")]
-public sealed class AuthController : Controller
+public class AuthController : Controller
 {
     private readonly AuthOptions _auth;
 
     public AuthController(IOptions<AuthOptions> auth)
     {
-        _auth = auth.Value ?? new AuthOptions();
+        _auth = auth.Value;
     }
 
-    [HttpGet("Login")]
+    [AllowAnonymous]
+    [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
-        ViewBag.ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
+        ViewBag.ReturnUrl = returnUrl;
         return View();
     }
 
-    [HttpPost("Login")]
+    [AllowAnonymous]
+    [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> LoginPost(string username, string password, string? returnUrl = null)
+    public async Task<IActionResult> Login(string username, string password, string? returnUrl = null)
     {
-        var ok = _auth.Users.Any(u =>
+        var ok = _auth.Users?.Any(u =>
             string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase) &&
-            u.Password == password);
+            u.Password == password) == true;
 
         if (!ok)
         {
             TempData["err"] = "Kullanıcı adı veya şifre hatalı.";
-            ViewBag.ReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
-            return View("Login");
+            return RedirectToAction(nameof(Login), new { returnUrl });
         }
 
         var claims = new List<Claim>
@@ -49,10 +46,7 @@ public sealed class AuthController : Controller
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            principal,
-            new AuthenticationProperties { IsPersistent = true });
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
         if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
             return Redirect(returnUrl);
@@ -61,7 +55,8 @@ public sealed class AuthController : Controller
     }
 
     [Authorize]
-    [HttpGet("Logout")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
