@@ -25,59 +25,33 @@
 
     <!-- SEARCH BAR -->
     <div class="ov-content" style="padding-bottom:0">
-  <form method="get" asp-action="Index" class="searchbar-row">
+      <form method="get" asp-action="Index" class="searchbar-row">
 
-    <div class="field">
-      <label>Patient ID</label>
-      <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
-    </div>
-
-    <div class="field">
-      <label>Patient Name</label>
-      <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
-    </div>
-
-    <div class="field">
-      <label>Study Date (From)</label>
-      <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
-    </div>
-
-    <div class="field">
-      <label>Study Date (To)</label>
-      <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-primary" type="submit">Search</button>
-      <a class="btn" asp-action="Index">Reset</a>
-    </div>
-
-  </form>
-</div>
-      <form method="get" asp-action="Index" class="searchbar">
-        <div class="row">
-          <div class="field">
-            <label>Patient ID</label>
-            <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
-          </div>
-          <div class="field">
-            <label>Patient Name</label>
-            <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
-          </div>
-          <div class="field">
-            <label>Study Date (From)</label>
-            <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
-          </div>
-          <div class="field">
-            <label>Study Date (To)</label>
-            <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
-          </div>
-
-          <div class="actions">
-            <button class="btn btn-primary" type="submit">Search</button>
-            <a class="btn" asp-action="Index">Reset</a>
-          </div>
+        <div class="field">
+          <label>Patient ID</label>
+          <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
         </div>
+
+        <div class="field">
+          <label>Patient Name</label>
+          <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
+        </div>
+
+        <div class="field">
+          <label>Study Date (From)</label>
+          <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
+        </div>
+
+        <div class="field">
+          <label>Study Date (To)</label>
+          <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Search</button>
+          <a class="btn" asp-action="Index">Reset</a>
+        </div>
+
       </form>
     </div>
 
@@ -130,43 +104,44 @@
 
 <style>
   /* minimal: mevcut ov-* temasını bozmadan arama satırı */
- .searchbar-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 10px;
-  background: rgba(0,0,0,.12);
-  flex-wrap: wrap;
-}
+  .searchbar-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 10px;
+    background: rgba(0,0,0,.12);
+    flex-wrap: wrap;
+  }
 
-.searchbar-row .field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 200px;
-}
+  .searchbar-row .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 200px;
+  }
 
-.searchbar-row label {
-  font-size: 12px;
-  color: #bdbdbd;
-}
+  .searchbar-row label {
+    font-size: 12px;
+    color: #bdbdbd;
+  }
 
-.searchbar-row input {
-  height: 38px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: #0f1113;
-  color: #ddd;
-  padding: 0 10px;
-}
+  .searchbar-row input {
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: #0f1113;
+    color: #ddd;
+    padding: 0 10px;
+  }
 
-.searchbar-row .actions {
-  display: flex;
-  gap: 10px;
-  margin-left: auto;
-}
+  .searchbar-row .actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+  }
+
   .btn { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#121416; color:#ddd; text-decoration:none; }
   .btn:hover { border-color: rgba(255,255,255,.22); }
   .btn-primary { border-color:#ff9800; color:#ff9800; }
