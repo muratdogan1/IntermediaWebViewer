@@ -403,3 +403,23 @@ a:hover{color:var(--accent); text-decoration:underline;}
   background:#0f0f10;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
+/* WL hint */
+.wl-hint{
+  position:absolute;
+  top:10px;
+  left:10px;
+  padding:6px 10px;
+  border-radius:8px;
+  background: rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.12);
+  color:#fff;
+  font-size:12px;
+  pointer-events:none;
+}
+
+/* ruler overlay */
+#rulerOverlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none; /* click canvas'a gitsin */
+}

@@ -31,16 +31,17 @@
                   <div class="study-title">
                     <div class="study-pn">@(!string.IsNullOrWhiteSpace(st.PatientName) ? st.PatientName : "Patient")</div>
                     <div class="study-uid" title="@st.StudyInstanceUid">@st.StudyInstanceUid</div>
-                    @if(!string.IsNullOrWhiteSpace(st.StudyDate))
+                    @if (!string.IsNullOrWhiteSpace(st.StudyDate))
                     {
                       <div class="study-date">@st.StudyDate</div>
                     }
                   </div>
 
-                  @foreach (var se in st.Series.Where(x =>
-                     !string.Equals((x.SeriesDescription ?? "").Trim(), "AutoAlign Verification", StringComparison.OrdinalIgnoreCase) &&
-                     !string.Equals((x.SeriesDescription ?? "").Trim(), "PhoenixZIPReport", StringComparison.OrdinalIgnoreCase)
-                  ))
+                  @foreach (var se in st.Series
+                    .Where(x =>
+                      !string.Equals((x.SeriesDescription ?? "").Trim(), "AutoAlign Verification", StringComparison.OrdinalIgnoreCase) &&
+                      !string.Equals((x.SeriesDescription ?? "").Trim(), "PhoenixZIPReport", StringComparison.OrdinalIgnoreCase)
+                    ))
                   {
                     <div class="series-block">
                       <div class="series-title">
@@ -80,7 +81,7 @@
         <div class="viewer-main">
           <div class="viewer-toolbar">
 
-            <!-- OViyam-like icon toolstrip (TEK SET) -->
+            <!-- OViyam-like icon strip -->
             <div class="ov-toolstrip">
               <button class="ov-icbtn" type="button" title="Pan (Drag)" id="toolPan">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -143,12 +144,44 @@
                   <path d="M12 4l4 4h-3v4h-2V8H8l4-4zM12 20l-4-4h3v-4h2v4h3l-4 4z"/>
                 </svg>
               </button>
+
+              <span class="ov-sep"></span>
+
+              <button class="ov-icbtn" type="button" title="WL/WW (Drag)" id="toolWL">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-1 3h2v12h-2V6z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Invert" id="toolInvert">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2a10 10 0 1 0 0 20V2zm0 2v16a8 8 0 0 1 0-16z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="1:1" id="toolOneToOne">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 7h3v2H9v8H7V9H6V7h1zm7 0h4v2h-2v6h2v2h-4v-2h2V9h-2V7z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Ruler" id="toolRuler">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 17l9-9 4 4-9 9H3v-4zm3 2h1.6l8-8L14 9.4l-8 8V19z"/>
+                </svg>
+              </button>
+
+              <button class="ov-icbtn" type="button" title="Clear Measure" id="toolClearMeasure">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6 6l12 12-1.4 1.4L4.6 7.4 6 6zm3-2h6a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H9z"/>
+                </svg>
+              </button>
             </div>
 
-            <!-- reset (pan/zoom reset) -->
+            <!-- legacy reset button used by scripts -->
             <button class="tool" type="button" id="btnReset">Reset</button>
 
-            <!-- cine -->
+            <!-- Cine -->
             <div class="cine">
               <span>Loop</span>
               <input id="cineLoop" type="checkbox" />
@@ -156,7 +189,7 @@
               <span id="cineInfo">0 / 0</span>
             </div>
 
-            <span class="hint">Wheel: Zoom • Drag: Pan</span>
+            <span style="color:#666;font-size:12px;margin-left:12px">Wheel: Zoom • Drag: Pan</span>
           </div>
 
           <div class="viewer-canvas" id="canvas">
@@ -169,6 +202,9 @@
             {
               <div style="color:#aaa">Seçili görüntü yok</div>
             }
+
+            <canvas id="rulerOverlay"></canvas>
+            <div id="wlHint" class="wl-hint" style="display:none;"></div>
           </div>
 
           <div class="viewer-caption" id="caption">
@@ -183,7 +219,7 @@
 
 <script>
   // =========================
-  // PAN + ZOOM (wheel + drag)
+  // PAN + ZOOM  (Wheel zoom + drag pan)
   // =========================
   (function () {
     const canvas = document.getElementById('canvas');
@@ -263,7 +299,7 @@
   })();
 
   // =========================
-  // CINE SLIDER (Oviyam-like)
+  // CINE SLIDER
   // =========================
   (function () {
     const slider = document.getElementById('cineSlider');
@@ -355,19 +391,19 @@
   })();
 
   // =========================
-  // TOP TOOLBAR ACTIONS
+  // TOP TOOLBAR ACTIONS (rotate/flip + zoom buttons + fit/reset)
   // =========================
-  (function(){
+  (function () {
     const img = document.getElementById('dicomImg');
     const canvas = document.getElementById('canvas');
-    if(!img || !canvas) return;
+    if (!img || !canvas) return;
 
-    let rot = 0;
+    let rot = 0; // deg
     let flipH = 1;
     let flipV = 1;
 
     let wrap = document.getElementById('imgWrap');
-    if(!wrap){
+    if (!wrap) {
       wrap = document.createElement('div');
       wrap.id = 'imgWrap';
       wrap.style.display = 'inline-block';
@@ -376,31 +412,219 @@
       wrap.appendChild(img);
     }
 
-    function applyExtra(){
+    function applyExtra() {
       wrap.style.transformOrigin = 'center center';
       wrap.style.transform = `rotate(${rot}deg) scale(${flipH}, ${flipV})`;
     }
 
-    function fireWheelZoom(isOut){
+    function setActive(btn) {
+      document.querySelectorAll('.ov-icbtn').forEach(x => x.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
+    function fireWheelZoom(isOut) {
       const rect = canvas.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top + rect.height/2;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
       const evt = new WheelEvent('wheel', { deltaY: isOut ? 100 : -100, clientX: cx, clientY: cy });
       canvas.dispatchEvent(evt);
     }
 
-    document.getElementById('toolZoomIn')?.addEventListener('click', ()=> fireWheelZoom(false));
-    document.getElementById('toolZoomOut')?.addEventListener('click', ()=> fireWheelZoom(true));
+    document.getElementById('toolZoomIn')?.addEventListener('click', () => fireWheelZoom(false));
+    document.getElementById('toolZoomOut')?.addEventListener('click', () => fireWheelZoom(true));
 
     const btnReset = document.getElementById('btnReset');
-    document.getElementById('toolReset2')?.addEventListener('click', ()=> btnReset?.click());
-    document.getElementById('toolFit')?.addEventListener('click', ()=> btnReset?.click());
+    document.getElementById('toolReset2')?.addEventListener('click', () => btnReset?.click());
+    document.getElementById('toolFit')?.addEventListener('click', () => btnReset?.click());
 
-    document.getElementById('toolRotL')?.addEventListener('click', ()=>{ rot = (rot - 90) % 360; applyExtra(); });
-    document.getElementById('toolRotR')?.addEventListener('click', ()=>{ rot = (rot + 90) % 360; applyExtra(); });
-    document.getElementById('toolFlipH')?.addEventListener('click', ()=>{ flipH *= -1; applyExtra(); });
-    document.getElementById('toolFlipV')?.addEventListener('click', ()=>{ flipV *= -1; applyExtra(); });
+    document.getElementById('toolRotL')?.addEventListener('click', () => { rot = (rot - 90) % 360; applyExtra(); });
+    document.getElementById('toolRotR')?.addEventListener('click', () => { rot = (rot + 90) % 360; applyExtra(); });
+    document.getElementById('toolFlipH')?.addEventListener('click', () => { flipH *= -1; applyExtra(); });
+    document.getElementById('toolFlipV')?.addEventListener('click', () => { flipV *= -1; applyExtra(); });
+
+    document.getElementById('toolPan')?.addEventListener('click', (e) => setActive(e.currentTarget));
 
     applyExtra();
+  })();
+
+  /* =========================
+     WL / INVERT / 1:1 / RULER
+     ========================= */
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const img = document.getElementById('dicomImg');
+    const overlay = document.getElementById('rulerOverlay');
+    const wlHint = document.getElementById('wlHint');
+
+    if (!canvas || !img) return;
+
+    let toolMode = 'pan'; // pan | wl | ruler
+    let invertOn = false;
+
+    let wlBrightness = 1.0; // 0.3..2.5
+    let wlContrast = 1.0;   // 0.3..3.0
+
+    let p1 = null;
+    let p2 = null;
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+    function applyFilter() {
+      const inv = invertOn ? 'invert(1) ' : '';
+      img.style.filter = `${inv}brightness(${wlBrightness}) contrast(${wlContrast})`;
+    }
+
+    function setTool(mode) {
+      toolMode = mode;
+
+      // sadece bizim araçlarda active yönetelim (pan/zoom/rotate vb etkilenmesin)
+      document.getElementById('toolWL')?.classList.toggle('active', mode === 'wl');
+      document.getElementById('toolRuler')?.classList.toggle('active', mode === 'ruler');
+
+      if (wlHint) {
+        wlHint.style.display = (mode === 'wl') ? 'block' : 'none';
+        wlHint.textContent = (mode === 'wl') ? `WL: B ${wlBrightness.toFixed(2)} • C ${wlContrast.toFixed(2)}` : '';
+      }
+    }
+
+    // WL veya ruler aktifken, pan scriptinin mousedown'ını engelle
+    canvas.addEventListener('mousedown', (e) => {
+      if (toolMode === 'wl' || toolMode === 'ruler') {
+        e.stopPropagation();
+      }
+    }, true);
+
+    // ---- WL drag
+    let wlDown = false;
+    let wlStartX = 0, wlStartY = 0;
+    let wlStartB = 1.0, wlStartC = 1.0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (toolMode !== 'wl') return;
+      wlDown = true;
+      wlStartX = e.clientX;
+      wlStartY = e.clientY;
+      wlStartB = wlBrightness;
+      wlStartC = wlContrast;
+      canvas.classList.add('grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!wlDown) return;
+      const dx = e.clientX - wlStartX;
+      const dy = e.clientY - wlStartY;
+
+      wlContrast = clamp(wlStartC + dx / 300, 0.3, 3.0);
+      wlBrightness = clamp(wlStartB - dy / 300, 0.3, 2.5);
+      applyFilter();
+
+      if (wlHint) wlHint.textContent = `WL: B ${wlBrightness.toFixed(2)} • C ${wlContrast.toFixed(2)}`;
+    });
+
+    window.addEventListener('mouseup', () => {
+      wlDown = false;
+      canvas.classList.remove('grabbing');
+    });
+
+    // ---- RULER
+    function resizeOverlay() {
+      if (!overlay) return;
+      const r = canvas.getBoundingClientRect();
+      overlay.width = Math.floor(r.width);
+      overlay.height = Math.floor(r.height);
+      overlay.style.width = r.width + 'px';
+      overlay.style.height = r.height + 'px';
+    }
+
+    function clearRuler() {
+      p1 = null; p2 = null;
+      if (!overlay) return;
+      const ctx = overlay.getContext('2d');
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+    }
+
+    function drawRuler() {
+      if (!overlay) return;
+      const ctx = overlay.getContext('2d');
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      if (!p1 || !p2) return;
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,138,0,0.95)';
+      ctx.fillStyle = 'rgba(255,138,0,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      ctx.beginPath(); ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p2.x, p2.y, 4, 0, Math.PI * 2); ctx.fill();
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      const tx = (p1.x + p2.x) / 2;
+      const ty = (p1.y + p2.y) / 2;
+
+      ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+      const label = `${dist.toFixed(1)} px`;
+      const w = ctx.measureText(label).width;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(tx - w / 2 - 6, ty - 18, w + 12, 18);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillText(label, tx - w / 2, ty - 5);
+    }
+
+    canvas.addEventListener('click', (e) => {
+      if (toolMode !== 'ruler') return;
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
+
+      if (!p1) { p1 = { x, y }; p2 = null; }
+      else { p2 = { x, y }; }
+
+      drawRuler();
+    });
+
+    window.addEventListener('resize', () => {
+      resizeOverlay();
+      drawRuler();
+    });
+
+    // ---- Buttons
+    document.getElementById('toolWL')?.addEventListener('click', () => setTool(toolMode === 'wl' ? 'pan' : 'wl'));
+    document.getElementById('toolRuler')?.addEventListener('click', () => {
+      setTool(toolMode === 'ruler' ? 'pan' : 'ruler');
+      resizeOverlay();
+      drawRuler();
+    });
+    document.getElementById('toolClearMeasure')?.addEventListener('click', clearRuler);
+
+    document.getElementById('toolInvert')?.addEventListener('click', () => {
+      invertOn = !invertOn;
+      applyFilter();
+      document.getElementById('toolInvert')?.classList.toggle('active', invertOn);
+    });
+
+    document.getElementById('toolOneToOne')?.addEventListener('click', () => {
+      // 1:1 => zoom/pan reset + WL reset + invert kapat
+      document.getElementById('btnReset')?.click();
+      wlBrightness = 1.0;
+      wlContrast = 1.0;
+      invertOn = false;
+      applyFilter();
+      document.getElementById('toolInvert')?.classList.remove('active');
+      if (wlHint && toolMode === 'wl') wlHint.textContent = `WL: B ${wlBrightness.toFixed(2)} • C ${wlContrast.toFixed(2)}`;
+    });
+
+    // init
+    applyFilter();
+    resizeOverlay();
+    setTool('pan');
   })();
 </script>
