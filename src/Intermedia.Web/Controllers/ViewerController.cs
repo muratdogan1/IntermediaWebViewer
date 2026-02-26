@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Intermedia.Web.Controllers;
 
+[Authorize]
 public class ViewerController : Controller
 {
     private readonly IWebHostEnvironment _env;

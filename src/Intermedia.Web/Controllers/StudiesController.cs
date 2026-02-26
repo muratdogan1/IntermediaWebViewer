@@ -1,9 +1,11 @@
 using FellowOakDicom;
 using Intermedia.Dicom.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Intermedia.Web.Controllers;
 
+[Authorize]
 public class StudiesController : Controller
 {
     private readonly IDicomQueryService _query;

@@ -1,11 +1,19 @@
 using FellowOakDicom;
 using Intermedia.Dicom.Services;
 using FellowOakDicom.Imaging;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.AccessDeniedPath = "/Account/Login";
+    });
 
+builder.Services.AddAuthorization();
 // DICOM servisleri
 builder.Services.AddScoped<IDicomQueryService, DicomQueryService>();
 builder.Services.AddScoped<IDicomMoveService, DicomMoveService>();
@@ -48,6 +56,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
