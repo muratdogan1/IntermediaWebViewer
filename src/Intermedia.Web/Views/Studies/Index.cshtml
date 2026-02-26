@@ -2,6 +2,7 @@
 
 <div class="ov-shell">
   <div class="ov-card">
+
     <div class="ov-topbar">
       <div>
         <span class="ov-brand">interMEDIA</span>
@@ -13,57 +14,165 @@
       </div>
     </div>
 
+    @if (TempData["err"] is string err)
+    {
+      <div style="padding:10px;color:#ffb3b3">@err</div>
+    }
+    @if (TempData["ok"] is string ok)
+    {
+      <div style="padding:10px;color:#b8ffb8">@ok</div>
+    }
+
+    <!-- SEARCH BAR -->
+    <div class="ov-content" style="padding-bottom:0">
+  <form method="get" asp-action="Index" class="searchbar-row">
+
+    <div class="field">
+      <label>Patient ID</label>
+      <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
+    </div>
+
+    <div class="field">
+      <label>Patient Name</label>
+      <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
+    </div>
+
+    <div class="field">
+      <label>Study Date (From)</label>
+      <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
+    </div>
+
+    <div class="field">
+      <label>Study Date (To)</label>
+      <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Search</button>
+      <a class="btn" asp-action="Index">Reset</a>
+    </div>
+
+  </form>
+</div>
+      <form method="get" asp-action="Index" class="searchbar">
+        <div class="row">
+          <div class="field">
+            <label>Patient ID</label>
+            <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
+          </div>
+          <div class="field">
+            <label>Patient Name</label>
+            <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
+          </div>
+          <div class="field">
+            <label>Study Date (From)</label>
+            <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
+          </div>
+          <div class="field">
+            <label>Study Date (To)</label>
+            <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-primary" type="submit">Search</button>
+            <a class="btn" asp-action="Index">Reset</a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- TABLE -->
     <div class="ov-content">
-
-      @if (TempData["ok"] is not null)
-      {
-        <div class="ov-alert ok">@TempData["ok"]</div>
-      }
-      @if (TempData["err"] is not null)
-      {
-        <div class="ov-alert err">@TempData["err"]</div>
-      }
-
       <table class="ov-table">
         <thead>
           <tr>
-            <th>Patient ID</th>
-            <th>Patient Name</th>
+            <th style="width:160px">Patient ID</th>
+            <th style="width:220px">Patient Name</th>
             <th>Study UID</th>
-            <th style="width:120px;text-align:right">Viewer</th>
-            <th style="width:140px;text-align:right">Download</th>
+            <th style="width:110px;text-align:center">Viewer</th>
+            <th style="width:130px;text-align:center">Download</th>
           </tr>
         </thead>
         <tbody>
-          @foreach (var s in Model)
+        @if (Model == null || Model.Count == 0)
+        {
+          <tr><td colspan="5" style="padding:18px;color:#aaa">Kayıt bulunamadı.</td></tr>
+        }
+        else
+        {
+          foreach (var s in Model)
           {
             <tr>
               <td>@s.PatientId</td>
-              <td>@s.PatientName</td>
+              <td style="font-weight:600">@s.PatientName</td>
               <td style="font-family:monospace">@s.StudyInstanceUid</td>
 
-              <!-- OPEN: kesinlikle relative route -->
-              <td style="text-align:right">
-                <a class="btn btn-dark"
-                   asp-controller="Viewer"
-                   asp-action="Index"
-                   asp-route-studyUid="@s.StudyInstanceUid">
-                  Open
-                </a>
+              <td style="text-align:center">
+                <a class="btn btn-small" asp-action="Open" asp-route-studyUid="@s.StudyInstanceUid">Open</a>
               </td>
 
-              <!-- C-MOVE -->
-              <td style="text-align:right">
+              <td style="text-align:center">
                 <form method="post" asp-action="Move" style="display:inline">
+                  @Html.AntiForgeryToken()
                   <input type="hidden" name="studyUid" value="@s.StudyInstanceUid" />
-                  <button class="btn btn-orange" type="submit">C-MOVE</button>
+                  <button class="btn btn-warn btn-small" type="submit">C-MOVE</button>
                 </form>
               </td>
             </tr>
           }
+        }
         </tbody>
       </table>
-
     </div>
+
   </div>
 </div>
+
+<style>
+  /* minimal: mevcut ov-* temasını bozmadan arama satırı */
+ .searchbar-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+  flex-wrap: wrap;
+}
+
+.searchbar-row .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.searchbar-row label {
+  font-size: 12px;
+  color: #bdbdbd;
+}
+
+.searchbar-row input {
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: #0f1113;
+  color: #ddd;
+  padding: 0 10px;
+}
+
+.searchbar-row .actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+  .btn { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#121416; color:#ddd; text-decoration:none; }
+  .btn:hover { border-color: rgba(255,255,255,.22); }
+  .btn-primary { border-color:#ff9800; color:#ff9800; }
+  .btn-warn { border-color:#ff9800; color:#ff9800; }
+  .btn-small { padding:7px 12px; font-size:13px; }
+  .ov-table { width:100%; border-collapse:collapse; }
+  .ov-table th { text-align:left; font-size:12px; color:#ff9800; padding:12px 10px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .ov-table td { padding:12px 10px; border-bottom:1px solid rgba(255,255,255,.06); color:#ddd; }
+</style>

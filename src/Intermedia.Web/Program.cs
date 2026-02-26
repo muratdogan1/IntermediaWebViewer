@@ -1,38 +1,37 @@
 using FellowOakDicom;
 using Intermedia.Dicom.Services;
+using FellowOakDicom.Imaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
-// App servisleri
+// DICOM servisleri
 builder.Services.AddScoped<IDicomQueryService, DicomQueryService>();
 builder.Services.AddScoped<IDicomMoveService, DicomMoveService>();
 
-// fo-dicom DI
+// fo-dicom imaging (ImageSharp)
 builder.Services.AddFellowOakDicom()
-    .AddImageManager<FellowOakDicom.Imaging.ImageSharpImageManager>();
+    .AddImageManager<ImageSharpImageManager>();
 
-// ---- Settings'i oluştur + DI'a ekle (Build'den ÖNCE!) ----
+// Settings -> DI (Controller bunu alacak)
 var storeSettings = new DicomServerSettings
 {
     Host = "127.0.0.1",
     Port = 104,
     AeTitle = "interMEDIAPacs",
-
     LocalAeTitle = "LOCALSTORAGE",
     LocalPort = 11112,
     StorageFolder = Path.Combine(builder.Environment.ContentRootPath, "Storage")
 };
-
 builder.Services.AddSingleton(storeSettings);
 
 var app = builder.Build();
 
-// fo-dicom için gerekli (dokümandaki gibi)
+// fo-dicom için gerekli
 DicomSetupBuilder.UseServiceProvider(app.Services);
 
-// ---- Storage SCP ----
+// Storage SCP başlat
 var scp = new StorageScpHosted(app.Services, storeSettings);
 scp.Start();
 Console.WriteLine($"Storage SCP çalışıyor → AE: {storeSettings.LocalAeTitle}, Port: {storeSettings.LocalPort}");
@@ -45,11 +44,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// HTTPS uyarısı görüyorsan bunu kapatabilirsin:
-// app.UseHttpsRedirection();
-
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
 
 app.MapControllerRoute(
