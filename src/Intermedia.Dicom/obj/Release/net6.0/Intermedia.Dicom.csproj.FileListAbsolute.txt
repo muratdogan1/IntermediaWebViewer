@@ -1,0 +1,16 @@
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\bin\Release\net6.0\Intermedia.Dicom.deps.json
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\bin\Release\net6.0\Intermedia.Dicom.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\bin\Release\net6.0\Intermedia.Dicom.pdb
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\bin\Release\net6.0\Intermedia.Core.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\bin\Release\net6.0\Intermedia.Core.pdb
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.csproj.AssemblyReference.cache
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.AssemblyInfoInputs.cache
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.AssemblyInfo.cs
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.csproj.CoreCompileInputs.cache
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.sourcelink.json
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermed.8E05E4F2.Up2Date
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\refint\Intermedia.Dicom.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\Intermedia.Dicom.pdb
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Dicom\obj\Release\net6.0\ref\Intermedia.Dicom.dll

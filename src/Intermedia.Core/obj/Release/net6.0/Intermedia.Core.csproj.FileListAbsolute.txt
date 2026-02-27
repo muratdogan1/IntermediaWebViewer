@@ -1,0 +1,12 @@
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\bin\Release\net6.0\Intermedia.Core.deps.json
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\bin\Release\net6.0\Intermedia.Core.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\bin\Release\net6.0\Intermedia.Core.pdb
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.AssemblyInfoInputs.cache
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.AssemblyInfo.cs
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.csproj.CoreCompileInputs.cache
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.sourcelink.json
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\refint\Intermedia.Core.dll
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\Intermedia.Core.pdb
+C:\Users\interMEDIA\OneDrive\Desktop\IntermediaWebViewer\src\Intermedia.Core\obj\Release\net6.0\ref\Intermedia.Core.dll
