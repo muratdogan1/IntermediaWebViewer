@@ -1,117 +1,95 @@
 @model List<Intermedia.Core.Models.DicomStudy>
 
-<div class="ov-shell">
-  <div class="ov-card">
+@{
+  ViewData["Title"] = "Home";
+}
 
-    <div class="ov-topbar">
-      <div>
-        <span class="ov-brand">interMEDIA</span>
-        <span class="ov-sub">IntermediaWebViewer</span>
-      </div>
-      <div class="ov-tabs">
-        <a class="ov-tab active" asp-controller="Studies" asp-action="Index">Home</a>
-        <a class="ov-tab" asp-controller="Viewer" asp-action="Index">Viewer</a>
-      </div>
-      <div class="ov-tabs">
-    <a class="ov-tab active" asp-controller="Studies" asp-action="Index">Home</a>
-    <a class="ov-tab" asp-controller="Viewer" asp-action="Index">Viewer</a>
+@if (TempData["err"] is string err)
+{
+  <div style="padding:10px;color:#ffb3b3">@err</div>
+}
+@if (TempData["ok"] is string ok)
+{
+  <div style="padding:10px;color:#b8ffb8">@ok</div>
+}
 
-    <form asp-controller="Auth" asp-action="Logout" method="post" style="display:inline">
-        <button type="submit" class="ov-tab" style="cursor:pointer">Logout</button>
-    </form>
+<!-- SEARCH BAR -->
+<div class="ov-content" style="padding-bottom:0">
+  <form method="get" asp-action="Index" class="searchbar-row">
+
+    <div class="field">
+      <label>Patient ID</label>
+      <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
+    </div>
+
+    <div class="field">
+      <label>Patient Name</label>
+      <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
+    </div>
+
+    <div class="field">
+      <label>Study Date (From)</label>
+      <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
+    </div>
+
+    <div class="field">
+      <label>Study Date (To)</label>
+      <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Search</button>
+      <a class="btn" asp-action="Index">Reset</a>
+    </div>
+
+  </form>
 </div>
-    </div>
 
-    @if (TempData["err"] is string err)
+<!-- TABLE -->
+<div class="ov-content">
+  <table class="ov-table">
+    <thead>
+      <tr>
+        <th style="width:160px">Patient ID</th>
+        <th style="width:220px">Patient Name</th>
+        <th>Study UID</th>
+        <th style="width:110px;text-align:center">Viewer</th>
+        <th style="width:130px;text-align:center">Download</th>
+      </tr>
+    </thead>
+    <tbody>
+    @if (Model == null || Model.Count == 0)
     {
-      <div style="padding:10px;color:#ffb3b3">@err</div>
+      <tr><td colspan="5" style="padding:18px;color:#aaa">Kayıt bulunamadı.</td></tr>
     }
-    @if (TempData["ok"] is string ok)
+    else
     {
-      <div style="padding:10px;color:#b8ffb8">@ok</div>
+      foreach (var s in Model)
+      {
+        <tr>
+          <td>@s.PatientId</td>
+          <td style="font-weight:600">@s.PatientName</td>
+          <td style="font-family:monospace">@s.StudyInstanceUid</td>
+
+          <td style="text-align:center">
+            <a class="btn btn-small" asp-action="Open" asp-route-studyUid="@s.StudyInstanceUid">Open</a>
+          </td>
+
+          <td style="text-align:center">
+            <form method="post" asp-action="Move" style="display:inline">
+              @Html.AntiForgeryToken()
+              <input type="hidden" name="studyUid" value="@s.StudyInstanceUid" />
+              <button class="btn btn-warn btn-small" type="submit">C-MOVE</button>
+            </form>
+          </td>
+        </tr>
+      }
     }
-
-    <!-- SEARCH BAR -->
-    <div class="ov-content" style="padding-bottom:0">
-      <form method="get" asp-action="Index" class="searchbar-row">
-
-        <div class="field">
-          <label>Patient ID</label>
-          <input name="patientId" value="@(ViewBag.PatientId ?? "")" placeholder="Patient ID" />
-        </div>
-
-        <div class="field">
-          <label>Patient Name</label>
-          <input name="patientName" value="@(ViewBag.PatientName ?? "")" placeholder="Patient Name" />
-        </div>
-
-        <div class="field">
-          <label>Study Date (From)</label>
-          <input type="date" name="fromDate" value="@(ViewBag.FromDate ?? "")" />
-        </div>
-
-        <div class="field">
-          <label>Study Date (To)</label>
-          <input type="date" name="toDate" value="@(ViewBag.ToDate ?? "")" />
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-primary" type="submit">Search</button>
-          <a class="btn" asp-action="Index">Reset</a>
-        </div>
-
-      </form>
-    </div>
-
-    <!-- TABLE -->
-    <div class="ov-content">
-      <table class="ov-table">
-        <thead>
-          <tr>
-            <th style="width:160px">Patient ID</th>
-            <th style="width:220px">Patient Name</th>
-            <th>Study UID</th>
-            <th style="width:110px;text-align:center">Viewer</th>
-            <th style="width:130px;text-align:center">Download</th>
-          </tr>
-        </thead>
-        <tbody>
-        @if (Model == null || Model.Count == 0)
-        {
-          <tr><td colspan="5" style="padding:18px;color:#aaa">Kayıt bulunamadı.</td></tr>
-        }
-        else
-        {
-          foreach (var s in Model)
-          {
-            <tr>
-              <td>@s.PatientId</td>
-              <td style="font-weight:600">@s.PatientName</td>
-              <td style="font-family:monospace">@s.StudyInstanceUid</td>
-
-              <td style="text-align:center">
-                <a class="btn btn-small" asp-action="Open" asp-route-studyUid="@s.StudyInstanceUid">Open</a>
-              </td>
-
-              <td style="text-align:center">
-                <form method="post" asp-action="Move" style="display:inline">
-                  @Html.AntiForgeryToken()
-                  <input type="hidden" name="studyUid" value="@s.StudyInstanceUid" />
-                  <button class="btn btn-warn btn-small" type="submit">C-MOVE</button>
-                </form>
-              </td>
-            </tr>
-          }
-        }
-        </tbody>
-      </table>
-    </div>
-
-  </div>
+    </tbody>
+  </table>
 </div>
 
 <style>
-  /* minimal: mevcut ov-* temasını bozmadan arama satırı */
   .searchbar-row {
     display: flex;
     align-items: flex-end;
@@ -122,19 +100,13 @@
     background: rgba(0,0,0,.12);
     flex-wrap: wrap;
   }
-
   .searchbar-row .field {
     display: flex;
     flex-direction: column;
     gap: 6px;
     min-width: 200px;
   }
-
-  .searchbar-row label {
-    font-size: 12px;
-    color: #bdbdbd;
-  }
-
+  .searchbar-row label { font-size: 12px; color: #bdbdbd; }
   .searchbar-row input {
     height: 38px;
     border-radius: 8px;
@@ -143,18 +115,14 @@
     color: #ddd;
     padding: 0 10px;
   }
-
-  .searchbar-row .actions {
-    display: flex;
-    gap: 10px;
-    margin-left: auto;
-  }
+  .searchbar-row .actions { display:flex; gap:10px; margin-left:auto; }
 
   .btn { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:#121416; color:#ddd; text-decoration:none; }
   .btn:hover { border-color: rgba(255,255,255,.22); }
   .btn-primary { border-color:#ff9800; color:#ff9800; }
   .btn-warn { border-color:#ff9800; color:#ff9800; }
   .btn-small { padding:7px 12px; font-size:13px; }
+
   .ov-table { width:100%; border-collapse:collapse; }
   .ov-table th { text-align:left; font-size:12px; color:#ff9800; padding:12px 10px; border-bottom:1px solid rgba(255,255,255,.08); }
   .ov-table td { padding:12px 10px; border-bottom:1px solid rgba(255,255,255,.06); color:#ddd; }

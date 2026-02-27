@@ -1,28 +1,54 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Intermedia.Web</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Intermedia.Web.styles.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/oviyam.css" asp-append-version="true" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@ViewData["Title"] - IntermediaWebViewer</title>
+
+  <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/oviyam.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-       
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+@{
+  var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? "").ToLowerInvariant();
+  var isStudies = controller == "studies";
+  var isViewer = controller == "viewer";
+}
+
+<div class="ov-shell">
+  <div class="ov-card">
+
+    <!-- GLOBAL TOPBAR -->
+    <div class="ov-topbar">
+      <div>
+        <span class="ov-brand">interMEDIA</span>
+        <span class="ov-sub">IntermediaWebViewer</span>
+      </div>
+
+      <div class="ov-tabs">
+        <a class="ov-tab @(isStudies ? "active" : "")" asp-controller="Studies" asp-action="Index">Home</a>
+        <a class="ov-tab @(isViewer ? "active" : "")" asp-controller="Viewer" asp-action="Index">Viewer</a>
+
+        <form asp-controller="Auth" asp-action="Logout" method="post" style="display:inline;margin:0">
+          @Html.AntiForgeryToken()
+          <button type="submit" class="ov-tab" style="cursor:pointer">Logout</button>
+        </form>
+      </div>
     </div>
 
-    
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+    <!-- PAGE -->
+    <main role="main">
+      @RenderBody()
+    </main>
+
+  </div>
+</div>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
