@@ -3,162 +3,77 @@
 <div class="ov-shell">
   <div class="ov-card">
 
+    <!-- TOPBAR YOK → Layout kullanıyor -->
+
     <div class="ov-content">
       <div class="viewer-grid">
 
         <!-- LEFT -->
         <div class="viewer-left">
-          <div class="study-tree" id="studyTree">
-            @if (Model.Studies == null || Model.Studies.Count == 0)
+          <div class="study-tree">
+            @foreach (var st in Model.Studies)
             {
-              <div style="color:#aaa;padding:12px">Storage içinde görüntü (.dcm + PixelData) yok.</div>
-            }
-            else
-            {
-              foreach (var st in Model.Studies)
-              {
-                <div class="study-block">
-                  <div class="study-title">
-                    <div class="study-pn">@(!string.IsNullOrWhiteSpace(st.PatientName) ? st.PatientName : "Patient")</div>
-                    <div class="study-uid" title="@st.StudyInstanceUid">@st.StudyInstanceUid</div>
-                    @if (!string.IsNullOrWhiteSpace(st.StudyDate))
-                    {
-                      <div class="study-date">@st.StudyDate</div>
-                    }
-                  </div>
-
-                  @foreach (var se in st.Series)
-                  {
-                    <div class="series-block">
-                      <div class="series-title">
-                        <span class="badge">@(!string.IsNullOrWhiteSpace(se.Modality) ? se.Modality : "OT")</span>
-                        <span class="series-desc">@(!string.IsNullOrWhiteSpace(se.SeriesDescription) ? se.SeriesDescription : "Series")</span>
-                        <span class="series-uid" title="@se.SeriesInstanceUid">@se.SeriesInstanceUid</span>
-                      </div>
-
-                      <div class="gridthumbs">
-                        @foreach (var f in se.Files)
-                        {
-                          var active = string.Equals(f.FileName, Model.Selected, StringComparison.OrdinalIgnoreCase) ? "active" : "";
-                          <a class="thumbLink @active"
-                             href="#"
-                             data-file="@f.FileName">
-                            <img src="@Url.Action("Render","Viewer", new { file = f.FileName, w = 160 })" />
-                            <div class="thumb-meta">
-                              @if (f.InstanceNumber.HasValue)
-                              {
-                                <span>#@f.InstanceNumber</span>
-                              }
-                            </div>
-                          </a>
-                        }
-                      </div>
-                    </div>
-                  }
+              <div class="study-block">
+                <div class="study-title">
+                  <div class="study-pn">@st.PatientName</div>
+                  <div class="study-uid">@st.StudyInstanceUid</div>
                 </div>
-              }
+
+                @foreach (var se in st.Series)
+                {
+                  <div class="series-block">
+                    <div class="series-title">
+                      <span class="badge">@se.Modality</span>
+                      <span class="series-desc">@se.SeriesDescription</span>
+                    </div>
+
+                    <div class="gridthumbs">
+                      @foreach (var f in se.Files)
+                      {
+                        var active = f.FileName == Model.Selected ? "active" : "";
+                        <a class="thumbLink @active"
+                           data-file="@f.FileName">
+                          <img src="/Viewer/Render?file=@f.FileName&w=160" />
+                        </a>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
             }
           </div>
         </div>
 
         <!-- MAIN -->
         <div class="viewer-main">
+
+          <!-- TOOLBAR -->
           <div class="viewer-toolbar">
 
-            <!-- SINGLE TOOLBAR (SVG) -->
-            <div class="ov-toolstrip">
-              <button class="ov-icbtn" type="button" title="Pan (Drag)" id="toolPan">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M8 12V7a2 2 0 1 1 4 0v5h1V6a2 2 0 1 1 4 0v8.5l.7.2A3.5 3.5 0 0 1 20 18v1.5A3.5 3.5 0 0 1 16.5 23H12a6 6 0 0 1-6-6v-5a2 2 0 1 1 2 0z"/>
-                </svg>
-              </button>
+            <button class="ov-icbtn" id="zoomIn">+</button>
+            <button class="ov-icbtn" id="zoomOut">−</button>
+            <button class="ov-icbtn" id="reset">Reset</button>
 
-              <button class="ov-icbtn" type="button" title="Zoom In" id="toolZoomIn">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
-                  <path d="M10.5 8a1 1 0 0 1 1 1v1.5H13a1 1 0 1 1 0 2h-1.5V14a1 1 0 1 1-2 0v-1.5H8a1 1 0 1 1 0-2h1.5V9a1 1 0 0 1 1-1z"/>
-                  <path d="M16.8 16.8a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1-1.4 1.4l-2.6-2.6a1 1 0 0 1 0-1.4z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Zoom Out" id="toolZoomOut">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z"/>
-                  <path d="M8 11.5a1 1 0 0 1 1-1h3a1 1 0 1 1 0 2H9a1 1 0 0 1-1-1z"/>
-                  <path d="M16.8 16.8a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1-1.4 1.4l-2.6-2.6a1 1 0 0 1 0-1.4z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Fit" id="toolFit">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M7 3H3v4a1 1 0 1 0 2 0V5h2a1 1 0 1 0 0-2zM21 7V3h-4a1 1 0 1 0 0 2h2v2a1 1 0 1 0 2 0zM7 21H3v-4a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2zM21 17v4h-4a1 1 0 1 1 0-2h2v-2a1 1 0 1 1 2 0z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Reset" id="toolReset2">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5a7 7 0 1 1-6.3 4 1 1 0 1 1 1.8.9A5 5 0 1 0 12 7h-1a1 1 0 1 1 0-2h3.5A1.5 1.5 0 0 1 16 6.5V10a1 1 0 1 1-2 0V7.6A7 7 0 0 0 12 5z"/>
-                </svg>
-              </button>
-
-              <span class="ov-sep"></span>
-
-              <button class="ov-icbtn" type="button" title="Rotate Left" id="toolRotL">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5a7 7 0 1 1-6.2 10.2 1 1 0 1 1 1.8-.9A5 5 0 1 0 12 7h-1.2l1.1 1.1a1 1 0 0 1-1.4 1.4L7.7 6.7a1 1 0 0 1 0-1.4l2.8-2.8a1 1 0 1 1 1.4 1.4L10.8 5H12z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Rotate Right" id="toolRotR">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 5a7 7 0 1 0 6.2 10.2 1 1 0 1 0-1.8-.9A5 5 0 1 1 12 7h1.2l-1.1 1.1a1 1 0 0 0 1.4 1.4l2.8-2.8a1 1 0 0 0 0-1.4l-2.8-2.8a1 1 0 1 0-1.4 1.4L13.2 5H12z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Flip H" id="toolFlipH">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M11 4a1 1 0 0 1 1 1v14a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1z"/>
-                  <path d="M4 12l4-4v3h4v2H8v3l-4-4zM20 12l-4 4v-3h-4v-2h4V8l4 4z"/>
-                </svg>
-              </button>
-
-              <button class="ov-icbtn" type="button" title="Flip V" id="toolFlipV">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M4 11a1 1 0 0 1 1-1h14a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1z"/>
-                  <path d="M12 4l4 4h-3v4h-2V8H8l4-4zM12 20l-4-4h3v-4h2v4h3l-4 4z"/>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Hidden reset trigger -->
-            <button type="button" id="btnReset" style="display:none"></button>
-
-            <!-- Cine -->
             <div class="cine">
-              <span>Loop</span>
-              <input id="cineLoop" type="checkbox" />
-              <input id="cineSlider" type="range" min="0" max="0" value="0" step="1" />
+              <input id="cineSlider" type="range" min="0" max="0" value="0">
               <span id="cineInfo">0 / 0</span>
             </div>
 
-            <span style="color:#666;font-size:12px;margin-left:12px">Wheel: Zoom • Drag: Pan</span>
           </div>
 
+          <!-- CANVAS -->
           <div class="viewer-canvas" id="canvas">
-            @if (!string.IsNullOrWhiteSpace(Model.Selected))
+            @if (!string.IsNullOrEmpty(Model.Selected))
             {
-              <img id="dicomImg" draggable="false"
-                   src="@Url.Action("Render","Viewer", new { file = Model.Selected })" />
+              <img id="dicomImg"
+                   src="/Viewer/Render?file=@Model.Selected" />
             }
             else
             {
-              <div style="color:#aaa">Seçili görüntü yok</div>
+              <div>Seçili görüntü yok</div>
             }
           </div>
 
-          <div class="viewer-caption" id="caption">
-            Açılıyor: @Model.Selected
-          </div>
         </div>
 
       </div>
@@ -166,225 +81,65 @@
   </div>
 </div>
 
-@section Scripts {
 <script>
-  // =========================
-  // PAN + ZOOM (wheel + drag)
-  // =========================
-  (function () {
-    const canvas = document.getElementById('canvas');
-    const img = document.getElementById('dicomImg');
-    const btnReset = document.getElementById('btnReset');
-    if (!canvas || !img || !btnReset) return;
+const img = document.getElementById('dicomImg');
+const thumbs = Array.from(document.querySelectorAll('.thumbLink'));
+const slider = document.getElementById('cineSlider');
+const info = document.getElementById('cineInfo');
 
-    let scale = 1;
-    let tx = 0, ty = 0;
+if(img && thumbs.length){
 
-    let isDown = false;
-    let startX = 0, startY = 0;
-    let startTx = 0, startTy = 0;
+  let idx = thumbs.findIndex(t =>
+    t.dataset.file === "@Model.Selected");
 
-    function apply() {
-      img.style.transform = translate(${tx}px, ${ty}px) scale(${scale});
-      img.style.transformOrigin = '0 0';
-    }
+  if(idx < 0) idx = 0;
 
-    function clampScale(v) {
-      return Math.min(8, Math.max(0.2, v));
-    }
+  const files = thumbs.map(t => t.dataset.file);
 
-    function zoomAt(delta, clientX, clientY) {
-      const rect = canvas.getBoundingClientRect();
-      const cx = clientX - rect.left;
-      const cy = clientY - rect.top;
+  slider.max = files.length - 1;
+  slider.value = idx;
 
-      const prev = scale;
-      const next = clampScale(scale * (delta > 0 ? 0.9 : 1.1));
-      if (next === prev) return;
+  function setImage(i){
+    if(i < 0) i = 0;
+    if(i >= files.length) i = files.length-1;
 
-      const wx = (cx - tx) / prev;
-      const wy = (cy - ty) / prev;
+    idx = i;
+    slider.value = i;
+    info.textContent = (i+1)+" / "+files.length;
 
-      scale = next;
-      tx = cx - wx * scale;
-      ty = cy - wy * scale;
-      apply();
-    }
+    img.src = "/Viewer/Render?file=" + files[i];
 
-    canvas.addEventListener('wheel', (e) => {
+    thumbs.forEach(t=>t.classList.remove("active"));
+    thumbs[i].classList.add("active");
+  }
+
+  thumbs.forEach((t,i)=>{
+    t.onclick = e=>{
       e.preventDefault();
-      zoomAt(e.deltaY, e.clientX, e.clientY);
-    }, { passive: false });
-
-    canvas.addEventListener('mousedown', (e) => {
-      isDown = true;
-      canvas.classList.add('grabbing');
-      startX = e.clientX;
-      startY = e.clientY;
-      startTx = tx;
-      startTy = ty;
-    });
-
-    window.addEventListener('mousemove', (e) => {
-      if (!isDown) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      tx = startTx + dx;
-      ty = startTy + dy;
-      apply();
-    });
-
-    window.addEventListener('mouseup', () => {
-      isDown = false;
-      canvas.classList.remove('grabbing');
-    });
-
-    btnReset.addEventListener('click', () => {
-      scale = 1;
-      tx = 0; ty = 0;
-      apply();
-    });
-
-    apply();
-  })();
-
-  // =========================
-  // CINE SLIDER + THUMB CLICK
-  // =========================
-  (function () {
-    const slider = document.getElementById('cineSlider');
-    const info = document.getElementById('cineInfo');
-    const loopChk = document.getElementById('cineLoop');
-    const img = document.getElementById('dicomImg');
-    const caption = document.getElementById('caption');
-
-    const thumbs = Array.from(document.querySelectorAll('a.thumbLink[data-file]'));
-    if (!slider || !info || !loopChk || !img || thumbs.length === 0) {
-      if (info) info.textContent = "0 / 0";
-      return;
+      setImage(i);
     }
+  });
 
-    const files = thumbs.map(a => a.getAttribute('data-file'));
-    const selectedFromServer = "@(Model.Selected ?? "")";
+  slider.oninput = ()=> setImage(parseInt(slider.value));
 
-    function findIndexByFile(file) {
-      if (!file) return 0;
-      const ix = files.findIndex(x => (x || "").toLowerCase() === file.toLowerCase());
-      return ix >= 0 ? ix : 0;
-    }
-
-    let idx = findIndexByFile(selectedFromServer);
-
-    slider.min = 0;
-    slider.max = Math.max(0, files.length - 1);
-    slider.value = idx;
-
-    function setActiveThumb(i) {
-      thumbs.forEach((a, k) => a.classList.toggle('active', k === i));
-      thumbs[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
-
-    function setImageByIndex(i, updateUrl = true) {
-      i = Math.max(0, Math.min(files.length - 1, i));
-      idx = i;
-
-      slider.value = String(i);
-      info.textContent = ${i + 1} / ${files.length};
-
-      const file = files[i];
-      img.src = /Viewer/Render?file=${encodeURIComponent(file)};
-      if (caption) caption.textContent = Açılıyor: ${file};
-
-      setActiveThumb(i);
-
-      if (updateUrl) {
-        const newUrl = /Viewer/Index?file=${encodeURIComponent(file)};
-        history.replaceState(null, "", newUrl);
-      }
-    }
-
-    slider.addEventListener('input', () => {
-      setImageByIndex(parseInt(slider.value, 10), true);
-    });
-
-    thumbs.forEach((a, i) => {
-      a.addEventListener('click', (e) => {
-        e.preventDefault();
-        setImageByIndex(i, true);
-      });
-    });
-
-    let timer = null;
-    function stopLoop() { if (timer) { clearInterval(timer); timer = null; } }
-    function startLoop() {
-      stopLoop();
-      timer = setInterval(() => {
-        let next = idx + 1;
-        if (next >= files.length) {
-          if (loopChk.checked) next = 0;
-          else { stopLoop(); return; }
-        }
-        setImageByIndex(next, true);
-      }, 140);
-    }
-
-    loopChk.addEventListener('change', () => {
-      if (loopChk.checked) startLoop();
-      else stopLoop();
-    });
-
-    setImageByIndex(idx, false);
-  })();
-
-  // =========================
-  // TOP TOOLBAR ACTIONS
-  // =========================
-  (function(){
-    const img = document.getElementById('dicomImg');
-    const canvas = document.getElementById('canvas');
-    if(!img || !canvas) return;
-
-    let rot = 0;
-    let flipH = 1;
-    let flipV = 1;
-
-    // wrap image for rotate/flip (pan/zoom stays on img transform)
-    let wrap = document.getElementById('imgWrap');
-    if(!wrap){
-      wrap = document.createElement('div');
-      wrap.id = 'imgWrap';
-      wrap.style.display = 'inline-block';
-      wrap.style.willChange = 'transform';
-      img.parentNode.insertBefore(wrap, img);
-      wrap.appendChild(img);
-    }
-
-    function applyExtra(){
-      wrap.style.transformOrigin = 'center center';
-      wrap.style.transform = rotate(${rot}deg) scale(${flipH}, ${flipV});
-    }
-
-    function fireWheelZoom(isOut){
-      const rect = canvas.getBoundingClientRect();
-      const cx = rect.left + rect.width/2;
-      const cy = rect.top + rect.height/2;
-      const evt = new WheelEvent('wheel', { deltaY: isOut ? 100 : -100, clientX: cx, clientY: cy });
-      canvas.dispatchEvent(evt);
-    }
-
-    document.getElementById('toolZoomIn')?.addEventListener('click', ()=> fireWheelZoom(false));
-    document.getElementById('toolZoomOut')?.addEventListener('click', ()=> fireWheelZoom(true));
-
-    const btnReset = document.getElementById('btnReset');
-    document.getElementById('toolReset2')?.addEventListener('click', ()=> btnReset?.click());
-    document.getElementById('toolFit')?.addEventListener('click', ()=> btnReset?.click());
-
-    document.getElementById('toolRotL')?.addEventListener('click', ()=>{ rot = (rot - 90) % 360; applyExtra(); });
-    document.getElementById('toolRotR')?.addEventListener('click', ()=>{ rot = (rot + 90) % 360; applyExtra(); });
-    document.getElementById('toolFlipH')?.addEventListener('click', ()=>{ flipH *= -1; applyExtra(); });
-    document.getElementById('toolFlipV')?.addEventListener('click', ()=>{ flipV *= -1; applyExtra(); });
-
-    applyExtra();
-  })();
-</script>
+  setImage(idx);
 }
+
+/* ZOOM */
+let scale=1;
+
+document.getElementById("zoomIn").onclick=()=>{
+  scale*=1.2;
+  img.style.transform="scale("+scale+")";
+}
+
+document.getElementById("zoomOut").onclick=()=>{
+  scale/=1.2;
+  img.style.transform="scale("+scale+")";
+}
+
+document.getElementById("reset").onclick=()=>{
+  scale=1;
+  img.style.transform="scale(1)";
+}
+</script>
