@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Intermedia.Dicom")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fc317aa837068c641d1ad687b89b5eda13dc55c6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+48c1786837a8bf9508244ee551b1be3456d977e5")]
 [assembly: System.Reflection.AssemblyProductAttribute("Intermedia.Dicom")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Intermedia.Dicom")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
