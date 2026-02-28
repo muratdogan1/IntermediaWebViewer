@@ -2,23 +2,6 @@
 
 <div class="ov-shell">
   <div class="ov-card">
-    <div class="ov-topbar">
-      <div>
-        <span class="ov-brand">interMEDIA</span>
-        <span class="ov-sub">interMEDIA Dicom viewer</span>
-      </div>
-
-      <!-- TEK MENÜ (Home / Viewer / Logout) -->
-      <div class="ov-tabs">
-        <a class="ov-tab" asp-controller="Studies" asp-action="Index">Home</a>
-        <a class="ov-tab active" asp-controller="Viewer" asp-action="Index">Viewer</a>
-
-        <form asp-controller="Auth" asp-action="Logout" method="post" style="display:inline">
-          @Html.AntiForgeryToken()
-          <button type="submit" class="ov-tab" style="cursor:pointer;background:transparent">Logout</button>
-        </form>
-      </div>
-    </div>
 
     <div class="ov-content">
       <div class="viewer-grid">
@@ -26,7 +9,7 @@
         <!-- LEFT -->
         <div class="viewer-left">
           <div class="study-tree" id="studyTree">
-            @if (Model?.Studies == null || Model.Studies.Count == 0)
+            @if (Model.Studies == null || Model.Studies.Count == 0)
             {
               <div style="color:#aaa;padding:12px">Storage içinde görüntü (.dcm + PixelData) yok.</div>
             }
@@ -56,8 +39,8 @@
                       <div class="gridthumbs">
                         @foreach (var f in se.Files)
                         {
-                          var isActive = string.Equals(f.FileName, Model.Selected, StringComparison.OrdinalIgnoreCase);
-                          <a class="thumbLink @(isActive ? "active" : "")"
+                          var active = string.Equals(f.FileName, Model.Selected, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+                          <a class="thumbLink @active"
                              href="#"
                              data-file="@f.FileName">
                             <img src="@Url.Action("Render","Viewer", new { file = f.FileName, w = 160 })" />
@@ -82,7 +65,7 @@
         <div class="viewer-main">
           <div class="viewer-toolbar">
 
-            <!-- SVG TOOLBAR -->
+            <!-- SINGLE TOOLBAR (SVG) -->
             <div class="ov-toolstrip">
               <button class="ov-icbtn" type="button" title="Pan (Drag)" id="toolPan">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -112,7 +95,7 @@
                 </svg>
               </button>
 
-              <button class="ov-icbtn" type="button" title="Reset" id="toolReset">
+              <button class="ov-icbtn" type="button" title="Reset" id="toolReset2">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 5a7 7 0 1 1-6.3 4 1 1 0 1 1 1.8.9A5 5 0 1 0 12 7h-1a1 1 0 1 1 0-2h3.5A1.5 1.5 0 0 1 16 6.5V10a1 1 0 1 1-2 0V7.6A7 7 0 0 0 12 5z"/>
                 </svg>
@@ -147,7 +130,10 @@
               </button>
             </div>
 
-            <!-- CINE -->
+            <!-- Hidden reset trigger -->
+            <button type="button" id="btnReset" style="display:none"></button>
+
+            <!-- Cine -->
             <div class="cine">
               <span>Loop</span>
               <input id="cineLoop" type="checkbox" />
@@ -161,10 +147,8 @@
           <div class="viewer-canvas" id="canvas">
             @if (!string.IsNullOrWhiteSpace(Model.Selected))
             {
-              <div id="imgWrap">
-                <img id="dicomImg" draggable="false"
-                     src="@Url.Action("Render","Viewer", new { file = Model.Selected })" />
-              </div>
+              <img id="dicomImg" draggable="false"
+                   src="@Url.Action("Render","Viewer", new { file = Model.Selected })" />
             }
             else
             {
@@ -182,184 +166,225 @@
   </div>
 </div>
 
-<style>
-  /* View özel küçük düzeltmeler (oviyam.css’i bozmadan) */
-  .viewer-left { min-height:0; }
-  .study-tree { overflow:auto; min-height:0; height:100%; }
-
-  /* buton svg rengi */
-  .ov-icbtn svg { width:16px; height:16px; fill: currentColor; display:block; }
-
-  /* canvas pan cursor */
-  .viewer-canvas { position:relative; overflow:hidden; cursor:grab; user-select:none; }
-  .viewer-canvas.grabbing { cursor:grabbing; }
-
-  /* wrapper transform (tek yerden) */
-  #imgWrap { display:inline-block; will-change: transform; transform-origin: 0 0; }
-</style>
-
+@section Scripts {
 <script>
-(function () {
-  const canvas = document.getElementById('canvas');
-  const wrap = document.getElementById('imgWrap');
-  const img = document.getElementById('dicomImg');
+  // =========================
+  // PAN + ZOOM (wheel + drag)
+  // =========================
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const img = document.getElementById('dicomImg');
+    const btnReset = document.getElementById('btnReset');
+    if (!canvas || !img || !btnReset) return;
 
-  if (!canvas || !wrap || !img) return;
+    let scale = 1;
+    let tx = 0, ty = 0;
 
-  // --- transform state
-  let scale = 1;
-  let tx = 0, ty = 0;
-  let rot = 0;
-  let flipH = 1, flipV = 1;
+    let isDown = false;
+    let startX = 0, startY = 0;
+    let startTx = 0, startTy = 0;
 
-  function clampScale(v) { return Math.min(8, Math.max(0.2, v)); }
-
-  function apply() {
-    wrap.style.transform = translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rot}deg) scale(${flipH}, ${flipV});
-  }
-
-  // --- zoom at point
-  function zoomAt(deltaY, clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const cx = clientX - rect.left;
-    const cy = clientY - rect.top;
-
-    const prev = scale;
-    const next = clampScale(scale * (deltaY > 0 ? 0.9 : 1.1));
-    if (next === prev) return;
-
-    // keep point under cursor stable (in "world" coords of current translate/scale only)
-    const wx = (cx - tx) / prev;
-    const wy = (cy - ty) / prev;
-
-    scale = next;
-    tx = cx - wx * scale;
-    ty = cy - wy * scale;
-    apply();
-  }
-
-  canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    zoomAt(e.deltaY, e.clientX, e.clientY);
-  }, { passive: false });
-
-  // --- pan drag
-  let isDown = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
-
-  canvas.addEventListener('mousedown', (e) => {
-    isDown = true;
-    canvas.classList.add('grabbing');
-    startX = e.clientX; startY = e.clientY;
-    startTx = tx; startTy = ty;
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDown) return;
-    tx = startTx + (e.clientX - startX);
-    ty = startTy + (e.clientY - startY);
-    apply();
-  });
-
-  window.addEventListener('mouseup', () => {
-    isDown = false;
-    canvas.classList.remove('grabbing');
-  });
-
-  // --- toolbar buttons
-  function fireZoom(isOut) {
-    const rect = canvas.getBoundingClientRect();
-    zoomAt(isOut ? 120 : -120, rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }
-
-  function resetAll() {
-    scale = 1; tx = 0; ty = 0;
-    rot = 0; flipH = 1; flipV = 1;
-    apply();
-  }
-
-  document.getElementById('toolZoomIn')?.addEventListener('click', () => fireZoom(false));
-  document.getElementById('toolZoomOut')?.addEventListener('click', () => fireZoom(true));
-  document.getElementById('toolReset')?.addEventListener('click', resetAll);
-  document.getElementById('toolFit')?.addEventListener('click', () => { scale = 1; tx = 0; ty = 0; apply(); });
-
-  document.getElementById('toolRotL')?.addEventListener('click', () => { rot = (rot - 90) % 360; apply(); });
-  document.getElementById('toolRotR')?.addEventListener('click', () => { rot = (rot + 90) % 360; apply(); });
-  document.getElementById('toolFlipH')?.addEventListener('click', () => { flipH *= -1; apply(); });
-  document.getElementById('toolFlipV')?.addEventListener('click', () => { flipV *= -1; apply(); });
-
-  // --- thumbs + cine
-  const slider = document.getElementById('cineSlider');
-  const info = document.getElementById('cineInfo');
-  const loopChk = document.getElementById('cineLoop');
-  const caption = document.getElementById('caption');
-
-  const thumbs = Array.from(document.querySelectorAll('a.thumbLink[data-file]'));
-  const files = thumbs.map(a => a.getAttribute('data-file')).filter(Boolean);
-
-  function setActiveThumb(i) {
-    thumbs.forEach((a, k) => a.classList.toggle('active', k === i));
-    thumbs[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }
-
-  function setImageByIndex(i, updateUrl = true) {
-    if (files.length === 0) return;
-    i = Math.max(0, Math.min(files.length - 1, i));
-
-    const file = files[i];
-    img.src = /Viewer/Render?file=${encodeURIComponent(file)};
-    if (caption) caption.textContent = Açılıyor: ${file};
-
-    if (slider) slider.value = String(i);
-    if (info) info.textContent = ${i + 1} / ${files.length};
-    setActiveThumb(i);
-
-    if (updateUrl) {
-      const url = /Viewer?file=${encodeURIComponent(file)};
-      history.replaceState(null, "", url);
+    function apply() {
+      img.style.transform = translate(${tx}px, ${ty}px) scale(${scale});
+      img.style.transformOrigin = '0 0';
     }
-  }
 
-  // initial index
-  const selectedFromServer = "@(Model.Selected ?? "")".toLowerCase();
-  let idx = Math.max(0, files.findIndex(x => (x || "").toLowerCase() === selectedFromServer));
-  if (idx < 0) idx = 0;
+    function clampScale(v) {
+      return Math.min(8, Math.max(0.2, v));
+    }
 
-  if (slider) {
-    slider.min = "0";
-    slider.max = String(Math.max(0, files.length - 1));
-    slider.value = String(idx);
-    slider.addEventListener('input', () => setImageByIndex(parseInt(slider.value, 10), true));
-  }
+    function zoomAt(delta, clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = clientX - rect.left;
+      const cy = clientY - rect.top;
 
-  thumbs.forEach((a, i) => {
-    a.addEventListener('click', (e) => {
+      const prev = scale;
+      const next = clampScale(scale * (delta > 0 ? 0.9 : 1.1));
+      if (next === prev) return;
+
+      const wx = (cx - tx) / prev;
+      const wy = (cy - ty) / prev;
+
+      scale = next;
+      tx = cx - wx * scale;
+      ty = cy - wy * scale;
+      apply();
+    }
+
+    canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      setImageByIndex(i, true);
+      zoomAt(e.deltaY, e.clientX, e.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDown = true;
+      canvas.classList.add('grabbing');
+      startX = e.clientX;
+      startY = e.clientY;
+      startTx = tx;
+      startTy = ty;
     });
-  });
 
-  let timer = null;
-  function stopLoop() { if (timer) { clearInterval(timer); timer = null; } }
-  function startLoop() {
-    stopLoop();
-    timer = setInterval(() => {
-      let next = idx + 1;
-      if (next >= files.length) {
-        if (loopChk?.checked) next = 0;
-        else { stopLoop(); return; }
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      tx = startTx + dx;
+      ty = startTy + dy;
+      apply();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDown = false;
+      canvas.classList.remove('grabbing');
+    });
+
+    btnReset.addEventListener('click', () => {
+      scale = 1;
+      tx = 0; ty = 0;
+      apply();
+    });
+
+    apply();
+  })();
+
+  // =========================
+  // CINE SLIDER + THUMB CLICK
+  // =========================
+  (function () {
+    const slider = document.getElementById('cineSlider');
+    const info = document.getElementById('cineInfo');
+    const loopChk = document.getElementById('cineLoop');
+    const img = document.getElementById('dicomImg');
+    const caption = document.getElementById('caption');
+
+    const thumbs = Array.from(document.querySelectorAll('a.thumbLink[data-file]'));
+    if (!slider || !info || !loopChk || !img || thumbs.length === 0) {
+      if (info) info.textContent = "0 / 0";
+      return;
+    }
+
+    const files = thumbs.map(a => a.getAttribute('data-file'));
+    const selectedFromServer = "@(Model.Selected ?? "")";
+
+    function findIndexByFile(file) {
+      if (!file) return 0;
+      const ix = files.findIndex(x => (x || "").toLowerCase() === file.toLowerCase());
+      return ix >= 0 ? ix : 0;
+    }
+
+    let idx = findIndexByFile(selectedFromServer);
+
+    slider.min = 0;
+    slider.max = Math.max(0, files.length - 1);
+    slider.value = idx;
+
+    function setActiveThumb(i) {
+      thumbs.forEach((a, k) => a.classList.toggle('active', k === i));
+      thumbs[i]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    function setImageByIndex(i, updateUrl = true) {
+      i = Math.max(0, Math.min(files.length - 1, i));
+      idx = i;
+
+      slider.value = String(i);
+      info.textContent = ${i + 1} / ${files.length};
+
+      const file = files[i];
+      img.src = /Viewer/Render?file=${encodeURIComponent(file)};
+      if (caption) caption.textContent = Açılıyor: ${file};
+
+      setActiveThumb(i);
+
+      if (updateUrl) {
+        const newUrl = /Viewer/Index?file=${encodeURIComponent(file)};
+        history.replaceState(null, "", newUrl);
       }
-      idx = next;
-      setImageByIndex(idx, true);
-    }, 140);
-  }
+    }
 
-  loopChk?.addEventListener('change', () => {
-    if (loopChk.checked) startLoop();
-    else stopLoop();
-  });
+    slider.addEventListener('input', () => {
+      setImageByIndex(parseInt(slider.value, 10), true);
+    });
 
-  // first render
-  setImageByIndex(idx, false);
-  apply();
-})();
+    thumbs.forEach((a, i) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        setImageByIndex(i, true);
+      });
+    });
+
+    let timer = null;
+    function stopLoop() { if (timer) { clearInterval(timer); timer = null; } }
+    function startLoop() {
+      stopLoop();
+      timer = setInterval(() => {
+        let next = idx + 1;
+        if (next >= files.length) {
+          if (loopChk.checked) next = 0;
+          else { stopLoop(); return; }
+        }
+        setImageByIndex(next, true);
+      }, 140);
+    }
+
+    loopChk.addEventListener('change', () => {
+      if (loopChk.checked) startLoop();
+      else stopLoop();
+    });
+
+    setImageByIndex(idx, false);
+  })();
+
+  // =========================
+  // TOP TOOLBAR ACTIONS
+  // =========================
+  (function(){
+    const img = document.getElementById('dicomImg');
+    const canvas = document.getElementById('canvas');
+    if(!img || !canvas) return;
+
+    let rot = 0;
+    let flipH = 1;
+    let flipV = 1;
+
+    // wrap image for rotate/flip (pan/zoom stays on img transform)
+    let wrap = document.getElementById('imgWrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'imgWrap';
+      wrap.style.display = 'inline-block';
+      wrap.style.willChange = 'transform';
+      img.parentNode.insertBefore(wrap, img);
+      wrap.appendChild(img);
+    }
+
+    function applyExtra(){
+      wrap.style.transformOrigin = 'center center';
+      wrap.style.transform = rotate(${rot}deg) scale(${flipH}, ${flipV});
+    }
+
+    function fireWheelZoom(isOut){
+      const rect = canvas.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const evt = new WheelEvent('wheel', { deltaY: isOut ? 100 : -100, clientX: cx, clientY: cy });
+      canvas.dispatchEvent(evt);
+    }
+
+    document.getElementById('toolZoomIn')?.addEventListener('click', ()=> fireWheelZoom(false));
+    document.getElementById('toolZoomOut')?.addEventListener('click', ()=> fireWheelZoom(true));
+
+    const btnReset = document.getElementById('btnReset');
+    document.getElementById('toolReset2')?.addEventListener('click', ()=> btnReset?.click());
+    document.getElementById('toolFit')?.addEventListener('click', ()=> btnReset?.click());
+
+    document.getElementById('toolRotL')?.addEventListener('click', ()=>{ rot = (rot - 90) % 360; applyExtra(); });
+    document.getElementById('toolRotR')?.addEventListener('click', ()=>{ rot = (rot + 90) % 360; applyExtra(); });
+    document.getElementById('toolFlipH')?.addEventListener('click', ()=>{ flipH *= -1; applyExtra(); });
+    document.getElementById('toolFlipV')?.addEventListener('click', ()=>{ flipV *= -1; applyExtra(); });
+
+    applyExtra();
+  })();
 </script>
+}
