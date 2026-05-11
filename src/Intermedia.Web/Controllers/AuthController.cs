@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Intermedia.Web.Models;
 
+namespace Intermedia.Web.Controllers;
+
 public class AuthController : Controller
 {
     private readonly AuthOptions _auth;

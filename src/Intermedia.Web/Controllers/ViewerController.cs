@@ -2,6 +2,7 @@ using System.IO;
 using FellowOakDicom;
 using FellowOakDicom.Imaging;
 using Intermedia.Web.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -14,10 +15,12 @@ namespace Intermedia.Web.Controllers;
 public class ViewerController : Controller
 {
     private readonly IWebHostEnvironment _env;
+    private readonly IMemoryCache _cache;
 
-    public ViewerController(IWebHostEnvironment env)
+    public ViewerController(IWebHostEnvironment env, IMemoryCache cache)
     {
         _env = env;
+        _cache = cache;
     }
 
     // /Viewer?studyUid=...&file=relative/path.dcm
@@ -27,15 +30,28 @@ public class ViewerController : Controller
         var storage = Path.Combine(_env.ContentRootPath, "Storage");
         Directory.CreateDirectory(storage);
 
-        // Storage altındaki tüm .dcm dosyalarını (alt klasörler dahil) tara
+        var searchRoot = GetStudySearchRoot(storage, studyUid);
+
+        // Study UID belliyse sadece ilgili klasörü tara; eski düz dosya yapısı için Storage'a düşer.
         var allDicomFiles = Directory
-            .EnumerateFiles(storage, "*.dcm", SearchOption.AllDirectories)
+            .EnumerateFiles(searchRoot, "*.dcm", SearchOption.AllDirectories)
+            .Select(path => new FileInfo(path))
             .ToList();
 
-        // Study/Series gruplama için meta oku (hatalı/PixelData olmayanlar da olabilir)
-        var studies = new List<StudyGroupVm>();
+        var latestWriteTicks = allDicomFiles.Count == 0
+            ? 0
+            : allDicomFiles.Max(x => x.LastWriteTimeUtc.Ticks);
+        var cacheKey = $"viewer-studies:{storage}:{studyUid}:{allDicomFiles.Count}:{latestWriteTicks}";
 
-        foreach (var fullPath in allDicomFiles)
+        var studies = _cache.GetOrCreate(cacheKey, entry =>
+        {
+            entry.SlidingExpiration = TimeSpan.FromMinutes(2);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+
+            // Study/Series gruplama için meta oku (hatalı/PixelData olmayanlar da olabilir)
+            var studies = new List<StudyGroupVm>();
+
+        foreach (var fullPath in allDicomFiles.Select(x => x.FullName))
         {
             try
             {
@@ -125,6 +141,9 @@ public class ViewerController : Controller
             .ThenBy(x => x.PatientName)
             .ToList();
 
+            return studies;
+        }) ?? new List<StudyGroupVm>();
+
         // Selected belirle:
         // 1) URL'den file geldiyse onu seç
         // 2) yoksa ilk bulunan dosyayı seç
@@ -173,11 +192,7 @@ public class ViewerController : Controller
         // URL'den gelen "a/b/c.dcm" -> OS path
         var rel = file.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
 
-        // Güvenlik: Storage dışına çıkmayı engelle
-        var fullPath = Path.GetFullPath(Path.Combine(storage, rel));
-        var storageFull = Path.GetFullPath(storage);
-
-        if (!fullPath.StartsWith(storageFull, StringComparison.OrdinalIgnoreCase))
+        if (!TryResolveStoragePath(storage, rel, out var fullPath))
             return BadRequest("Geçersiz dosya yolu.");
 
         if (!System.IO.File.Exists(fullPath))
@@ -208,5 +223,35 @@ public class ViewerController : Controller
         {
             return BadRequest("Seçilen DICOM görüntü değil (PixelData yok).");
         }
+        catch (Exception ex) when (ex.Message.Contains("codec", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("Transfer Syntax", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Bu DICOM dosyası desteklenmeyen codec/transfer syntax kullanıyor: {ex.Message}");
+        }
+    }
+
+    private static bool TryResolveStoragePath(string storage, string relativePath, out string fullPath)
+    {
+        var storageFull = Path.GetFullPath(storage);
+        fullPath = Path.GetFullPath(Path.Combine(storageFull, relativePath));
+        var rel = Path.GetRelativePath(storageFull, fullPath);
+
+        return !Path.IsPathFullyQualified(rel) &&
+            !rel.StartsWith("..", StringComparison.Ordinal) &&
+            !string.Equals(rel, "..", StringComparison.Ordinal);
+    }
+
+    private static string GetStudySearchRoot(string storage, string? studyUid)
+    {
+        if (string.IsNullOrWhiteSpace(studyUid))
+            return storage;
+
+        var studyFolder = Path.Combine(storage, SanitizePathPart(studyUid));
+        return Directory.Exists(studyFolder) ? studyFolder : storage;
+    }
+
+    private static string SanitizePathPart(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
     }
 }

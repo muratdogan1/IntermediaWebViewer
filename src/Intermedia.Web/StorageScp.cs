@@ -3,6 +3,8 @@ using FellowOakDicom;
 using FellowOakDicom.Network;
 using Microsoft.Extensions.Logging;
 
+namespace Intermedia.Web;
+
 public class StorageScp : DicomService, IDicomServiceProvider, IDicomCStoreProvider
 {
     private readonly ILogger _logger;
@@ -23,7 +25,10 @@ public class StorageScp : DicomService, IDicomServiceProvider, IDicomCStoreProvi
     public Task OnReceiveAssociationRequestAsync(DicomAssociation association)
     {
         foreach (var pc in association.PresentationContexts)
-            pc.SetResult(DicomPresentationContextResult.Accept);
+        {
+            if (pc.AbstractSyntax.StorageCategory != DicomStorageCategory.None)
+                pc.SetResult(DicomPresentationContextResult.Accept);
+        }
 
         return SendAssociationAcceptAsync(association);
     }

@@ -6,5 +6,7 @@ public class DicomStudy
     public string PatientName { get; set; } = string.Empty;
     public string PatientId { get; set; } = string.Empty;
     public string StudyDescription { get; set; } = string.Empty;
+    public string StudyDate { get; set; } = string.Empty;
+    public string StudyTime { get; set; } = string.Empty;
     public string Modality { get; set; } = string.Empty;
 }

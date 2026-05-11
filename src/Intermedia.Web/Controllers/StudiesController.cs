@@ -1,7 +1,9 @@
 using FellowOakDicom;
+using Intermedia.Core.Models;
 using Intermedia.Dicom.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Intermedia.Web.Controllers;
 
@@ -11,12 +13,14 @@ public class StudiesController : Controller
     private readonly IDicomQueryService _query;
     private readonly IDicomMoveService _move;
     private readonly DicomServerSettings _settings;
+    private readonly IMemoryCache _cache;
 
-    public StudiesController(IDicomQueryService query, IDicomMoveService move, DicomServerSettings settings)
+    public StudiesController(IDicomQueryService query, IDicomMoveService move, DicomServerSettings settings, IMemoryCache cache)
     {
         _query = query;
         _move = move;
         _settings = settings;
+        _cache = cache;
     }
 
     [HttpGet]
@@ -28,7 +32,13 @@ public class StudiesController : Controller
         ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
         ViewBag.ToDate = toDate?.ToString("yyyy-MM-dd");
 
-        var studies = await _query.FindStudiesAsync(_settings, patientName, patientId, fromDate, toDate);
+        var cacheKey = BuildStudiesCacheKey(patientName, patientId, fromDate, toDate);
+        var studies = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            return await _query.FindStudiesAsync(_settings, patientName, patientId, fromDate, toDate);
+        }) ?? new List<DicomStudy>();
+
         return View(studies);
     }
 
@@ -41,9 +51,17 @@ public class StudiesController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        await _move.MoveStudyAsync(_settings, studyUid);
+        try
+        {
+            var moveResult = await _move.MoveStudyAsync(_settings, studyUid);
+            TempData["ok"] = "C-MOVE tamamlandi: " + moveResult.Summary;
+        }
+        catch (Exception ex)
+        {
+            TempData["err"] = "C-MOVE basarisiz: " + ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
 
-        TempData["ok"] = "C-MOVE tamamlandı. Viewer'dan açabilirsin.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -63,7 +81,21 @@ public class StudiesController : Controller
         // 2) Yoksa otomatik C-MOVE çalıştır
         if (!hasLocal)
         {
-            await _move.MoveStudyAsync(_settings, studyUid);
+            if (!_settings.EnableScp)
+            {
+                TempData["err"] = "Bu study lokal Storage'ta yok. Otomatik C-MOVE icin Storage SCP kapali; appsettings.json icinde Dicom:EnableScp=true yap veya once C-MOVE/Store ile dosyalari indir.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                await _move.MoveStudyAsync(_settings, studyUid);
+            }
+            catch (Exception ex)
+            {
+                TempData["err"] = "C-MOVE basarisiz: " + ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
 
             // 3) SCP dosyaları yazarken küçük bir süre gerekebilir -> kısa poll
             var timeoutMs = 12000;
@@ -75,6 +107,15 @@ public class StudiesController : Controller
                     break;
 
                 await Task.Delay(stepMs);
+            }
+
+            if (!HasAnyRenderableInstanceInStorage(studyUid))
+            {
+                var localInstances = CountStudyInstancesInStorage(studyUid);
+                TempData["err"] = localInstances > 0
+                    ? $"C-MOVE sonrasi {localInstances} DICOM dosyasi bulundu ama PixelData yok; bu study goruntulenebilir instance icermiyor olabilir."
+                    : $"C-MOVE tamamlandi fakat Storage icinde bu study icin dosya bulunamadi. PACS tarafinda Move Destination AE '{_settings.MoveDestinationAeTitle}' -> bu uygulamanin IP:{_settings.LocalPort} portuna tanimli olmali ve firewall bu portu acmali.";
+                return RedirectToAction(nameof(Index));
             }
         }
 
@@ -90,7 +131,8 @@ public class StudiesController : Controller
             if (string.IsNullOrWhiteSpace(storage) || !Directory.Exists(storage))
                 return false;
 
-            foreach (var fullPath in Directory.EnumerateFiles(storage, "*.dcm", SearchOption.TopDirectoryOnly))
+            var searchRoot = GetStudySearchRoot(storage, studyUid);
+            foreach (var fullPath in Directory.EnumerateFiles(searchRoot, "*.dcm", SearchOption.AllDirectories))
             {
                 try
                 {
@@ -118,5 +160,60 @@ public class StudiesController : Controller
         {
             return false;
         }
+    }
+
+    private int CountStudyInstancesInStorage(string studyUid)
+    {
+        try
+        {
+            var storage = _settings.StorageFolder;
+            if (string.IsNullOrWhiteSpace(storage) || !Directory.Exists(storage))
+                return 0;
+
+            var searchRoot = GetStudySearchRoot(storage, studyUid);
+            var count = 0;
+            foreach (var fullPath in Directory.EnumerateFiles(searchRoot, "*.dcm", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    var df = DicomFile.Open(fullPath, FileReadOption.ReadLargeOnDemand);
+                    var sUid = df.Dataset?.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "") ?? "";
+                    if (string.Equals(sUid, studyUid, StringComparison.OrdinalIgnoreCase))
+                        count++;
+                }
+                catch
+                {
+                    // Ignore unreadable local files while producing a user-facing diagnostic.
+                }
+            }
+
+            return count;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static string BuildStudiesCacheKey(string? patientName, string? patientId, DateTime? fromDate, DateTime? toDate)
+    {
+            return string.Join("|",
+            "studies",
+            patientName?.Trim() ?? "",
+            patientId?.Trim() ?? "",
+            fromDate?.ToString("yyyyMMdd") ?? "",
+            toDate?.ToString("yyyyMMdd") ?? "");
+    }
+
+    private static string GetStudySearchRoot(string storage, string studyUid)
+    {
+        var studyFolder = Path.Combine(storage, SanitizePathPart(studyUid));
+        return Directory.Exists(studyFolder) ? studyFolder : storage;
+    }
+
+    private static string SanitizePathPart(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
     }
 }

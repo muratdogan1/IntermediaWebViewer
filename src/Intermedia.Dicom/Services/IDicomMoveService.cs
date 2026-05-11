@@ -4,5 +4,5 @@ namespace Intermedia.Dicom.Services;
 
 public interface IDicomMoveService
 {
-    Task MoveStudyAsync(DicomServerSettings settings, string studyInstanceUid);
+    Task<DicomMoveResult> MoveStudyAsync(DicomServerSettings settings, string studyInstanceUid);
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddMemoryCache();
 
 // Auth config
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection("Auth"));
@@ -38,14 +39,18 @@ builder.Services.AddScoped<IDicomMoveService, DicomMoveService>();
 builder.Services.AddFellowOakDicom()
     .AddImageManager<FellowOakDicom.Imaging.ImageSharpImageManager>();
 
+var localAeTitle = builder.Configuration["Dicom:LocalAeTitle"] ?? "LOCALSTORAGE";
+
 // DicomServerSettings -> DI
 var storeSettings = new DicomServerSettings
 {
     Host = builder.Configuration["Dicom:PacsHost"] ?? "127.0.0.1",
     Port = int.TryParse(builder.Configuration["Dicom:PacsPort"], out var p) ? p : 104,
     AeTitle = builder.Configuration["Dicom:PacsAeTitle"] ?? "interMEDIAPacs",
-    LocalAeTitle = builder.Configuration["Dicom:LocalAeTitle"] ?? "LOCALSTORAGE",
+    LocalAeTitle = localAeTitle,
+    MoveDestinationAeTitle = builder.Configuration["Dicom:MoveDestinationAeTitle"] ?? localAeTitle,
     LocalPort = int.TryParse(builder.Configuration["Dicom:StorePort"], out var lp) ? lp : 11112,
+    EnableScp = builder.Configuration.GetValue<bool?>("Dicom:EnableScp") ?? false,
     StorageFolder = Path.Combine(
         builder.Environment.ContentRootPath,
         builder.Configuration["Dicom:StoragePath"] ?? "Storage"
@@ -81,20 +86,18 @@ app.MapControllerRoute(
 );
 
 // ================================
-// ✅ Storage SCP sadece izinliyse başlat
+// Storage SCP config ile acilir/kapanir.
 // ================================
-var enableScpFromConfig = builder.Configuration.GetValue<bool?>("Dicom:EnableScp") ?? false;
 
-// IIS'te güvenli varsayılan: Production'da SCP kapalı
-var enableScp = app.Environment.IsDevelopment() && enableScpFromConfig;
+// Production varsayilani appsettings.json icinde kapali; gerekiyorsa EnableScp=true yap.
 
-if (enableScp)
+if (storeSettings.EnableScp)
 {
     try
     {
         var scp = new StorageScpHosted(app.Services, storeSettings);
         scp.Start();
-        Console.WriteLine($"Storage SCP çalışıyor → AE: {storeSettings.LocalAeTitle}, Port: {storeSettings.LocalPort}");
+        Console.WriteLine($"Storage SCP calisiyor -> AE: {storeSettings.MoveDestinationAeTitle}, Port: {storeSettings.LocalPort}");
         Console.WriteLine($"Storage Folder: {storeSettings.StorageFolder}");
         app.Lifetime.ApplicationStopping.Register(() => scp.Stop());
     }
@@ -105,7 +108,7 @@ if (enableScp)
 }
 else
 {
-    Console.WriteLine("Storage SCP kapalı (IIS/Production için önerilen).");
+    Console.WriteLine("Storage SCP kapali (Dicom:EnableScp=false).");
 }
 
 app.Run();

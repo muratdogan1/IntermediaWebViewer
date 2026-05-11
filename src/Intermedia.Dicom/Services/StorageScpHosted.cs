@@ -23,10 +23,10 @@ public sealed class StorageScpHosted
     {
         Directory.CreateDirectory(_settings.StorageFolder);
 
+        StorageScpService.StorageFolder = _settings.StorageFolder;
+
         var factory = _sp.GetRequiredService<IDicomServerFactory>();
         _server = factory.Create<StorageScpService>(_settings.LocalPort);
-
-        StorageScpService.StorageFolder = _settings.StorageFolder;
     }
 
     public void Stop()
@@ -54,8 +54,28 @@ public class StorageScpService : DicomService, IDicomServiceProvider, IDicomCSto
 
     public Task OnReceiveAssociationRequestAsync(DicomAssociation association)
     {
+        var accepted = 0;
+        var rejected = 0;
+
         foreach (var pc in association.PresentationContexts)
-            pc.SetResult(DicomPresentationContextResult.Accept);
+        {
+            if (pc.AbstractSyntax.StorageCategory != DicomStorageCategory.None)
+            {
+                pc.SetResult(DicomPresentationContextResult.Accept);
+                accepted++;
+            }
+            else
+            {
+                rejected++;
+            }
+        }
+
+        _logger.LogInformation(
+            "C-STORE association request: calling={CallingAE}, called={CalledAE}, acceptedContexts={Accepted}, rejectedContexts={Rejected}",
+            association.CallingAE,
+            association.CalledAE,
+            accepted,
+            rejected);
 
         return SendAssociationAcceptAsync(association);
     }
@@ -71,13 +91,21 @@ public class StorageScpService : DicomService, IDicomServiceProvider, IDicomCSto
 
     public async Task<DicomCStoreResponse> OnCStoreRequestAsync(DicomCStoreRequest request)
     {
-        Directory.CreateDirectory(StorageFolder);
-
         var sop = request.SOPInstanceUID?.UID ?? Guid.NewGuid().ToString("N");
-        var fileName = Path.Combine(StorageFolder, sop + ".dcm");
+        var studyUid = request.Dataset?.GetSingleValueOrDefault(DicomTag.StudyInstanceUID, "") ?? "";
+        var targetFolder = string.IsNullOrWhiteSpace(studyUid)
+            ? StorageFolder
+            : Path.Combine(StorageFolder, SanitizePathPart(studyUid));
+        Directory.CreateDirectory(targetFolder);
+
+        var fileName = Path.Combine(targetFolder, sop + ".dcm");
 
         await request.File.SaveAsync(fileName);
-        _logger.LogInformation("Saved: {file}", fileName);
+        _logger.LogInformation(
+            "C-STORE saved: sop={Sop}, study={StudyUid}, file={File}",
+            sop,
+            studyUid,
+            fileName);
 
         return new DicomCStoreResponse(request, DicomStatus.Success);
     }
@@ -86,5 +114,11 @@ public class StorageScpService : DicomService, IDicomServiceProvider, IDicomCSto
     {
         _logger.LogError(e, "C-STORE exception tempFile={temp}", tempFileName);
         return Task.CompletedTask;
+    }
+
+    private static string SanitizePathPart(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return new string(value.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
     }
 }

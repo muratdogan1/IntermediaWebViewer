@@ -10,6 +10,7 @@ public class DicomServerSettings
     public string LocalAeTitle { get; set; } = "LOCALSTORAGE";
     public string MoveDestinationAeTitle { get; set; } = "LOCALSTORAGE";
     public int LocalPort { get; set; } = 11112;
+    public bool EnableScp { get; set; }
 
     public string StorageFolder { get; set; } = @"C:\DicomCache";
 }

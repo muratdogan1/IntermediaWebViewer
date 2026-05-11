@@ -1,0 +1,25 @@
+# Build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+
+# User and IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Runtime/local data
+Storage/
+**/Storage/
+*.dcm
+*.rar
+
+# Logs and temporary files
+*.log
+*.tmp
+*.cache
+
+# Local project snapshots
+son/

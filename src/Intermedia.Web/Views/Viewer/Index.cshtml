@@ -435,7 +435,7 @@
     document.getElementById('toolFlipH')?.addEventListener('click', () => { flipH *= -1; applyExtra(); });
     document.getElementById('toolFlipV')?.addEventListener('click', () => { flipV *= -1; applyExtra(); });
 
-    document.getElementById('toolPan')?.addEventListener('click', (e) => setActive(e.currentTarget));
+    document.getElementById('toolPan')?.addEventListener('click', () => setTool('pan'));
 
     applyExtra();
   })();
@@ -470,7 +470,7 @@
     function setTool(mode) {
       toolMode = mode;
 
-      // sadece bizim araçlarda active yönetelim (pan/zoom/rotate vb etkilenmesin)
+      document.getElementById('toolPan')?.classList.toggle('active', mode === 'pan');
       document.getElementById('toolWL')?.classList.toggle('active', mode === 'wl');
       document.getElementById('toolRuler')?.classList.toggle('active', mode === 'ruler');
 
